@@ -5,8 +5,10 @@
 #include <map>
 #include <set>
 #include <unordered_set>
+#include <unordered_map>
 #include <cmath>
 #include <gnuplot-iostream.h>
+#include <assert.h>
 
 #include "vector3d.hpp"
 
@@ -15,10 +17,18 @@ bool EQ_DBL(double a, double b){
 }
 
 const double Resolution=200;
+
 const double Emin=542200;
 const double Emax=680200;
 const double Nmin=79600;
 const double Nmax=167800;
+
+//const double Emin=600000;
+//const double Emax=610000;
+//const double Nmin=100000;
+//const double Nmax=110000;
+
+
 const double thLat=46.26*M_PI/180.0;
 
 const double Xmax=Nmax-Nmin;
@@ -34,9 +44,13 @@ const int SunAngles = 360;
 
 
 int main(int ac, char** av) {
-    std::unordered_set<vector3d, hash> locations;   //Locations is unordered_set of all points in bounding box
+    assert(ac == 2);
+    std::cout << "openning file : " << av[1] <<  std::endl;
+    std::unordered_map<vector3d, std::vector<double>, hash> locations;   //Locations is unordered_set of all points in bounding box
     // std::set<vector3d> locations;
     std::ifstream ifs(av[1]);
+    if (!ifs.is_open())
+        throw std::runtime_error("could not open file : " + std::string(av[1]));
     
     while (!ifs.eof()) {
         double x;
@@ -49,8 +63,11 @@ int main(int ac, char** av) {
         if(vec.y<Emax && vec.y>Emin && vec.x<Nmax && vec.x>Nmin){ //Check that the imported coordinate is in our bounding rectangle
             vec.y=Emax-vec.y;              //y component of vector is direction WEST  -- from 0 to Ymax = Emax-Emin
             vec.x=vec.x-Nmin;              //x component of vecotr is direction NORTH -- from 0 to Xmax = Nmax-Nmin
+            
             //THETA ANGLES are from North to West axis
-            locations.insert(vec);         //Locations is unordered_set of all points in bounding box
+            std::vector<double> t(12);
+            //t.assign(12,3);
+            locations.insert(std::make_pair(vec, t));         //Locations is unordered_set of all points in bounding box
             if(EQ_DBL(vec.x,Ntest) && EQ_DBL(vec.y,Wtest)){
                 std::cout << "test point:" << vec <<  std::endl;  //check that test point is in set and output it
             }
@@ -105,24 +122,30 @@ int main(int ac, char** av) {
     
     
     
-    vector3d v(Ntest, Wtest,0);
-    auto it_v = locations.find(v);          //get our test vector
+   // vector3d v(Ntest, Wtest,0);
+   // auto it_v = locations.find(v);          //get our test vector
     
-    if (it_v == locations.end()){
-        std::cout <<"Testpoint not found"<< std::endl;
-        exit(-1);
-    }
+  //  if (it_v == locations.end()){
+  //      std::cout <<"Testpoint not found"<< std::endl;
+  //      exit(-1);
+  //  }
+    std::vector<double> Max_Sun;
+    Max_Sun.assign(12, 0);
+    std::vector<double> Min_Sun;
+    Min_Sun.assign(12, 1e12);
     
-    double Max_Sun = 0;
-    double Min_Sun = 1e12;
     
     int N=0;
     
-    for(auto v : locations){
-        N++;
+    std::cout <<"MAX: "<<Max_Sun[5]<<"   MIN: "<<Min_Sun[5]<<"   Progress: "<< 100*(N*1.0)/(Npoints*1.0) <<" %    \n";
 
+    for(auto pair : locations){
+        vector3d v = pair.first;
+//        std::vector<double>& vL=pair.second;
+        N++;
+        
         if (!(N % 10)) {
-            std::cout << 100*(N*1.0)/(Npoints*1.0) << " %    \r";
+            std::cout <<"MAX: "<<Max_Sun[5]<<"   MIN: "<<Min_Sun[5]<<"   Progress: "<< 100*(N*1.0)/(Npoints*1.0) <<" %    \r";
             std::cout.flush();
         }
         vector3d vNx(v.x+Resolution*10,v.y,0);            //get points 10xresolution to the north, west, south and east
@@ -134,6 +157,9 @@ int main(int ac, char** av) {
         auto itWx=locations.find(vWx);
         auto itSx=locations.find(vSx);
         if (itEx == locations.end()||itNx == locations.end()||itWx == locations.end()||itSx == locations.end()){
+            std::vector<double> L;
+            L.assign(12,-1.0);
+            locations[v]=L;
             continue;
         }
         
@@ -153,10 +179,10 @@ int main(int ac, char** av) {
             exit(-1);
         }
         
-        vE=*itE;
-        vN=*itN;
-        vW=*itW;
-        vS=*itS;
+        vE=itE->first;
+        vN=itN->first;
+        vW=itW->first;
+        vS=itS->first;
         
         vector3d Normal = ((((vE-v)^(vN-v))+((vW-v)^(vS-v)))/2).norm();       //normal is the crossproduct of two prependicular differences. Avgd.
         
@@ -210,8 +236,8 @@ int main(int ac, char** av) {
                             edge_points++;
                             continue;
                         }
-                        vector3d vec1 = *it_vec1;
-                        vector3d vec2 = *it_vec2;
+                        vector3d vec1 = it_vec1->first;
+                        vector3d vec2 = it_vec2->first;
                         double height = vec1.z*(x2-x)/Resolution + vec2.z*(x-x1)/Resolution-v.z;       //compute height at x via linear interpolation
                         double dist=(v-vector3d(x,y,v.z)).length();
                         double phi = atan(height/dist);
@@ -229,7 +255,7 @@ int main(int ac, char** av) {
                             edge_points++;
                             continue;
                         }
-                        vector3d vec = *it_vec;
+                        vector3d vec = it_vec->first;
                         double height = vec.z-v.z;                          //get height
                         double dist=(v-vector3d(x,y,v.z)).length();
                         double phi = atan(height/dist);
@@ -260,8 +286,8 @@ int main(int ac, char** av) {
                         edge_points++;
                         continue;
                     }
-                    vector3d vec1 = *it_vec1;
-                    vector3d vec2 = *it_vec2;
+                    vector3d vec1 = it_vec1->first;
+                    vector3d vec2 = it_vec2->first;
                     double height = vec1.z*(y2-y)/Resolution + vec2.z*(y-y1)/Resolution-v.z;       //compute height at y via linear interpolation
                     double dist=(v-vector3d(x,y,v.z)).length();
                     double phi = atan(height/dist);
@@ -278,7 +304,7 @@ int main(int ac, char** av) {
                         edge_points++;
                         continue;
                     }
-                    vector3d vec = *it_vec;
+                    vector3d vec = it_vec->first;
                     double height = vec.z-v.z;                          //get height
                     double dist=(v-vector3d(x,y,v.z)).length();
                     double phi = atan(height/dist);
@@ -306,7 +332,7 @@ int main(int ac, char** av) {
         
         
         std::vector<double> total_sun;
-        total_sun.assign(12, 0);
+        total_sun.assign(12, 0.0);
         double sun_intensity = 0;
         
         for(int j=0;j<12;j++){
@@ -320,14 +346,18 @@ int main(int ac, char** av) {
                     sun_intensity= std::abs(Sun_Vec_Month_Angle[j][k]*Normal)*sunIntensityMonthAngle[j][k];
                 }
                 total_sun[j]+=sun_intensity;
-                Max_Sun = (total_sun[j] > Max_Sun)?total_sun[j]:Max_Sun;
-                Min_Sun = (total_sun[j] < Min_Sun)?total_sun[j]:Min_Sun;
                 
             }
-            // std::cout <<"total_sun["<<j <<"]: "<<total_sun[j]<<std::endl;
+            pair.second[j]=total_sun[j];
+            Max_Sun[j] = (total_sun[j] > Max_Sun[j])?total_sun[j]:Max_Sun[j];
+            Min_Sun[j] = (total_sun[j] < Min_Sun[j])?total_sun[j]:Min_Sun[j];
+            //std::cout <<"total_sun["<<j <<"]: "<<total_sun[j]<<" pair.second["<<j <<"]: "<<pair.second[j]<<std::endl;
         }
-        v.L = total_sun;
-        
+        assert(total_sun.size() == 12);
+        locations[v]=total_sun;
+//        std::cout <<"total_sun[0]: "<<total_sun[0]<<" locations[v][0]: "<<locations[v][0]<<std::endl;
+        //vL = total_sun;
+        assert(pair.second.size() == 12);
         
         
         //std::cout <<"interior_points: "<<interior_points <<" edge_points: "<<edge_points<<std::endl;
@@ -351,6 +381,25 @@ int main(int ac, char** av) {
         //    gp2.send1d(boost::make_tuple(pts_Hour_theta, pts_thElv_y));
     }
     std::cout << locations.size() << std::endl;
-    std::cout <<"Max_Sun: "<<Max_Sun<<"Min_Sun: "<<Min_Sun<<std::endl;
+    std::cout <<"Max_Sun: "<<Max_Sun[5]<<"Min_Sun: "<<Min_Sun[5]<<std::endl;
+    
+    for(int k = 0; k < 12; ++k){
+        std::ostringstream oss("");
+        oss << k;
+        std::ofstream ofs("./Month" + oss.str() + ".txt");
+        if (!ofs.is_open()){
+            exit(-2);
+        }
+        for(auto pair : locations){
+            vector3d v = pair.first;
+//            std::vector<double>& vL=pair.second;
+//            std::cout <<"vL.size(): "<<vL.size()<<"pair.second.size(): "<<pair.second.size()<<std::endl;
+            if(pair.second.size()>k){
+                ofs << v.x << ", " << v.y << ", " << v.z << ", ";
+//                ofs << (pair.second[k]-Min_Sun[k])/(Max_Sun[k]-Min_Sun[k]) << std::endl;
+                ofs << locations[v][k] << std::endl;
+            }
+        }
+    }
     return 0;
 }
