@@ -395,9 +395,9 @@ int main(int ac, char** av) {
 //            std::vector<double>& vL=pair.second;
 //            std::cout <<"vL.size(): "<<vL.size()<<"pair.second.size(): "<<pair.second.size()<<std::endl;
             if(pair.second.size()>k){
-                ofs << v.x << ", " << v.y << ", " << v.z << ", ";
-//                ofs << (pair.second[k]-Min_Sun[k])/(Max_Sun[k]-Min_Sun[k]) << std::endl;
-                ofs << locations[v][k] << std::endl;
+                ofs << v.x << " " << v.y << " " << v.z << " ";
+                ofs << (locations[v][k]-Min_Sun[k])/(Max_Sun[k]-Min_Sun[k]) << std::endl;
+//                ofs << locations[v][k] << std::endl;
             }
         }
     }
