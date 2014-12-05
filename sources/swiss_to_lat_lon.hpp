@@ -1,4 +1,4 @@
-std::pair<double,double> Swiss_To_LatLon(double north, double east){
+std::pair<double,double> swiss_to_lat_lon(double north, double east){
     east -= 600000.0;                                             // Convert origin to "civil" system, where Bern has coordinates 0,0.
     north -= 200000.0;
     

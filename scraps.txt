@@ -1,0 +1,16 @@
+/*    std::vector<double> sun_intensity_with_normal(sun_angles);
+for(int k=0;k<sun_angles;k++){
+sun_intensity_with_normal[k]=std::abs(Sun_Vec_Month_Angle[Plot_Month][k]*Normal)*sunIntensityMonthAngle[Plot_Month][k];
+}*/
+
+/*
+Gnuplot gp;    //Use gnuplot
+gp << "set xrange [0:360]\nset yrange [-1:1]\n";  //set range for plotting
+gp << "plot '-' with lines, '-' with lines\n";                       //plot x,y with lines connecting them
+gp.send1d(boost::make_tuple(pts_theta,sunIntensityMonthAngle[Plot_Month]));
+gp.send1d(boost::make_tuple(pts_theta,sun_intensity_with_normal));
+*/
+//    vector3d Normal1= ((vE-v)^(vN-v)).norm();
+//    vector3d Normal2= ((vW-v)^(vS-v)).norm();
+
+//   std::cout << "Norm: " << Normal << " Norm1: " << Normal1 << " Norm2: " << Normal2 << std::endl;
