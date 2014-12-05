@@ -9,48 +9,82 @@
 #include <cmath>
 #include <gnuplot-iostream.h>
 #include <assert.h>
+#include <boost/program_options.hpp>
 
 #include "vector3d.hpp"
+#include "Swiss_To_LatLon.hpp"
+
+namespace po = boost::program_options;
+
+
+
 
 bool EQ_DBL(double a, double b){
-    return std::abs(a-b)<EPS_DBL;
+        return std::abs(a-b)<EPS_DBL;
 }
 
-const double Resolution=200;
-
-const double Emin=542200;
-const double Emax=680200;
-const double Nmin=79600;
-const double Nmax=167800;
-
-//const double Emin=600000;
-//const double Emax=610000;
-//const double Nmin=100000;
-//const double Nmax=110000;
 
 
 const double thLat=46.26*M_PI/180.0;
 
-const double Xmax=Nmax-Nmin;
-const double Ymax=Emax-Emin;
-
-//const double Wtest=Emax-596600;
-//const double Ntest=112200-Nmin;
-
-
-const double Wtest=Emax-601400;
-const double Ntest=126400-Nmin;
-const int SunAngles = 360;
-
 
 int main(int ac, char** av) {
+    //Variables to be assigned by program options
+    double Resolution;
+    double Nmax;
+    double Nmin;
+    double Emax;
+    double Emin;
+    int SunAngles;
+    int TimesPerYear;
+    int StartDay;
+    std::string InputFile;
+    std::string OutputFile;
+
+    // Declare the supported options.
+    po::options_description op_desc("Allowed options");
+    op_desc.add_options()
+    ("help", "print options table")
+    ("input-file,i", po::value<std::string>(&InputFile), "File containing height map data in x<space>y<space>z<newline> swiss coordinates format")
+    ("output-file-base,o", po::value<std::string>(&OutputFile)->default_value("data_out"), "Base filname for output files (default data_out)")
+    ("resolution,R", po::value<double>(&Resolution)->default_value(200.0), "resolution of data (default: 200.0)")
+    ("nmax",po::value<double>(&Nmax)->default_value(1e100), "maximum north coordinate to be treated (default 1e100)")
+    ("nmin",po::value<double>(&Nmin)->default_value(-1e100), "minimum north coordinate to be treated (default -1e100)")
+    ("emax",po::value<double>(&Emax)->default_value(1e100), "maximum east coordinate to be treated (default 1e100)")
+    ("emin",po::value<double>(&Emin)->default_value(-1e100), "minimum east coordinate to be treated (default -1e100)")
+    ("sunangles,s", po::value<int>(&SunAngles)->default_value(360), "number of angles to compute sunlight from (default 360)")
+    ("times,t", po::value<int>(&TimesPerYear)->default_value(12), "number of times per year to calculate at (default 12)")
+    ("start-day, D", po::value<int>(&StartDay)->default_value(20), "Day of the year to output first data. (default 20)")
+    ;
+    
+    po::positional_options_description pd;
+    pd.add("input-file", 1).add("output-file", 1);
+    
+    po::variables_map vm;
+    po::store(po::parse_command_line(ac, av, op_desc), vm);
+    po::notify(vm);
+    
+    if (vm.count("help")) {
+        std::cout <<"CrunchGeoData [options] [input file] [output base]"<<std::endl<< op_desc << "\n";
+        return 1;
+    }
+    
+    
+    exit(0);
+    
     assert(ac == 2);
-    std::cout << "openning file : " << av[1] <<  std::endl;
+    std::cout << "openning file : " << InputFile <<  std::endl;
     std::unordered_map<vector3d, std::vector<double>, hash> locations;   //Locations is unordered_set of all points in bounding box
     // std::set<vector3d> locations;
     std::ifstream ifs(av[1]);
     if (!ifs.is_open())
         throw std::runtime_error("could not open file : " + std::string(av[1]));
+    
+    
+    double Xmax=0;
+    double Ymax=0;
+    double Xmin=1e12;
+    double Ymin=1e12;
     
     while (!ifs.eof()) {
         double x;
@@ -59,38 +93,50 @@ int main(int ac, char** av) {
         ifs >> y;  //import East coordinate in y
         ifs >> x;  //import North coordinate in x
         ifs >> h;  //import Height in h
+        
+        
         vector3d vec(x, y, h);
         if(vec.y<Emax && vec.y>Emin && vec.x<Nmax && vec.x>Nmin){ //Check that the imported coordinate is in our bounding rectangle
-            vec.y=Emax-vec.y;              //y component of vector is direction WEST  -- from 0 to Ymax = Emax-Emin
-            vec.x=vec.x-Nmin;              //x component of vecotr is direction NORTH -- from 0 to Xmax = Nmax-Nmin
+            Xmax = x>Xmax?x:Xmax;
+            Ymax = y>Ymax?y:Ymax;
+            Xmin = x<Xmin?x:Xmin;
+            Ymin = y<Ymin?y:Ymin;
+
+            vec.y=-vec.y;              //y component of vector is direction WEST
+                                       //x component of vecotr is direction NORTH
             
             //THETA ANGLES are from North to West axis
-            std::vector<double> t(12);
-            //t.assign(12,3);
+            std::vector<double> t(TimesPerYear);
+            //t.assign(TimesPerYear,3);
             locations.insert(std::make_pair(vec, t));         //Locations is unordered_set of all points in bounding box
-            if(EQ_DBL(vec.x,Ntest) && EQ_DBL(vec.y,Wtest)){
-                std::cout << "test point:" << vec <<  std::endl;  //check that test point is in set and output it
-            }
             
         }
     }
+    
+    std::cout << "NE: " << Xmax <<", " << Ymax << " SW: "<< Xmin << " , " << Ymin <<  std::endl;
+
+    std::pair<double,double> NE = Swiss_To_LatLon(Xmax+Resolution/2.0, Ymax+Resolution/2.0);
+    std::pair<double,double> SW = Swiss_To_LatLon(Xmin-Resolution/2.0, Ymin-Resolution/2.0);
+
+    std::cout << std::setprecision(9) << "NE: " << NE.first <<", " << NE.second << " SW: "<< SW.first << ", " << SW.second <<  std::endl;
+    
+    
     int Npoints = locations.size();
     std::cout << "Number of points: " << Npoints << std::endl;
-    //std::cout << "coucou:" << Etest<< " ," <<Ntest << std::endl;
     
-    std::vector<std::vector<double> > phiAxMonthAngle(12,std::vector<double>(SunAngles));  //Elevation angle PHI of Earth's axis for a month(22nd) and hour
-    std::vector<std::vector<double> > sunIntensityMonthAngle(12,std::vector<double>(SunAngles));
+    std::vector<std::vector<double> > phiAxMonthAngle(TimesPerYear,std::vector<double>(SunAngles));  //Elevation angle PHI of Earth's axis for a month(22nd) and hour
+    std::vector<std::vector<double> > sunIntensityMonthAngle(TimesPerYear,std::vector<double>(SunAngles));
     std::vector<double> pts_theta(SunAngles);   //vector used for plotting the suns elevation, x-vector, hours
     std::vector<double> pts_thElv_y(SunAngles);  //vector used for plotting the suns elevation, y-vector, elevation angle
     std::vector<double> pts_dx(SunAngles);
     std::vector<double> pts_dy(SunAngles);
     
-    std::vector<std::vector <vector3d> > Sun_Vec_Month_Angle(12,std::vector<vector3d>(SunAngles));  //Unit vectors for sun's direction in month(22nd), hour.
+    std::vector<std::vector <vector3d> > Sun_Vec_Month_Angle(TimesPerYear,std::vector<vector3d>(SunAngles));  //Unit vectors for sun's direction in month(22nd), hour.
     
     //    int Plot_Month=5;  //Month we will plot the sun elevation for
     
-    for(int Month = 0; Month < 12; Month++){
-        double N=(365.0*Month)/12.0+22.0;  //We are computing values for the Nth day of the year
+    for(int Month = 0; Month < TimesPerYear; Month++){
+        double N=(365.0*Month)/TimesPerYear+StartDay;  //We are computing values for the Nth day of the year
         double phiAxMonth=-asin(0.39779*cos((0.98565*(N+10)+1.914*sin(0.98565*(N-2)*M_PI/180))*M_PI/180));  //Earth axis inclination for day N
         for(int thH=0;thH<SunAngles;thH++){//Angle theta for sun; 0 is North, +90 is West.
             int indTH= thH;
@@ -130,9 +176,9 @@ int main(int ac, char** av) {
   //      exit(-1);
   //  }
     std::vector<double> Max_Sun;
-    Max_Sun.assign(12, 0);
+    Max_Sun.assign(TimesPerYear, 0);
     std::vector<double> Min_Sun;
-    Min_Sun.assign(12, 1e12);
+    Min_Sun.assign(TimesPerYear, 1e12);
     
     
     int N=0;
@@ -144,8 +190,8 @@ int main(int ac, char** av) {
 //        std::vector<double>& vL=pair.second;
         N++;
         
-        if (!(N % 10)) {
-            std::cout <<"MAX: "<<Max_Sun[5]<<"   MIN: "<<Min_Sun[5]<<"   Progress: "<< 100*(N*1.0)/(Npoints*1.0) <<" %    \r";
+        if (1) {
+            std::cout <<"MAX: "<<Max_Sun[5]<<"   MIN: "<<Min_Sun[5]<<"   Progress: "<< 100.0*(N*1.0)/(Npoints*1.0) <<" %  ("<<N<<")    \r";
             std::cout.flush();
         }
         vector3d vNx(v.x+Resolution*10,v.y,0);            //get points 10xresolution to the north, west, south and east
@@ -158,7 +204,7 @@ int main(int ac, char** av) {
         auto itSx=locations.find(vSx);
         if (itEx == locations.end()||itNx == locations.end()||itWx == locations.end()||itSx == locations.end()){
             std::vector<double> L;
-            L.assign(12,-1.0);
+            L.assign(TimesPerYear,-1.0);
             locations[v]=L;
             continue;
         }
@@ -216,12 +262,16 @@ int main(int ac, char** av) {
             {
                 double sin_theta = sin(th);   //calculate sin of the angle in radians
                 double yend = EQ_DBL(copysign(1,sin_theta),1)?Ymax:0;     //if the sinus is positive endvalue is Ymax, if negative 0
-                for(double y=v.y+copysign(Resolution,sin_theta);copysign(y,sin_theta)<yend;y+=copysign(Resolution,sin_theta)){//increase/decrease if theta +/-
+                for(double y=v.y+copysign(Resolution,sin_theta);(y >= 0 && y <= Ymax);y+=copysign(Resolution,sin_theta)){//increase/decrease if theta +/-
                     double x = v.x+(y-v.y)/tan(th);                             //find the x that goes with y for this theta
                     double x1 = floor(x-((int)x%(int)Resolution));       //find the nearest lower gridpoint by subtracting remainder according to Resolution
                     double x2 = x1 + Resolution;                  //Add Resolution to get nearest higher gridpoint
+                    double phi = horizon_elevation_angles[theta];
+                    double dist = (v-vector3d(x,y,v.z)).length();
+                    double phiMaxTheta = atan(5000.0/dist);      //maximal phi at this theta (with height 5000 m)
                     
-                    if(x1>=Xmax||x1<0||x2>=Xmax||x2<0){
+                    
+                    if(x1>=Xmax||x1<0||x2>=Xmax||x2<0||phi>phiMaxTheta){
                         break;
                     }
                     if((int)x%(int)Resolution){                       //if x is not a grid point
@@ -239,8 +289,8 @@ int main(int ac, char** av) {
                         vector3d vec1 = it_vec1->first;
                         vector3d vec2 = it_vec2->first;
                         double height = vec1.z*(x2-x)/Resolution + vec2.z*(x-x1)/Resolution-v.z;       //compute height at x via linear interpolation
-                        double dist=(v-vector3d(x,y,v.z)).length();
-                        double phi = atan(height/dist);
+                        dist=(v-vector3d(x,y,v.z)).length();
+                        phi = atan(height/dist);
                         //std::cout <<height<< ", " << dist << " , " << phi << std::endl;
                         if(phi>horizon_elevation_angles[theta]){//see if larger
                             horizon_elevation_angles[theta]=phi;
@@ -271,11 +321,15 @@ int main(int ac, char** av) {
             double cos_theta = cos(th);
             double xend = EQ_DBL(copysign(1,cos_theta),1)?Xmax:0;     //if the cosinus is positive endvalue is Xmax, if negative 0
             
-            for(double x=v.x+copysign(Resolution,cos_theta);copysign(x,cos_theta)<xend;x+=copysign(Resolution,cos_theta)){//increase/decrease if theta +/-
+            for(double x=v.x+copysign(Resolution,cos_theta);(x >= 0 && x <= Xmax);x+=copysign(Resolution,cos_theta)){//increase/decrease if theta +/-
                 double y = v.y+(x-v.x)*tan(th);                             //find the y that goes with x for this theta
                 double y1 = floor(y-((int)y%(int)Resolution));       //find the nearest lower gridpoint by subtracting remainder according to Resolution
                 double y2 = y1 + Resolution;                  //Add Resolution to get nearest higher gridpoint
-                if(y1>=Xmax||y1<0||y2>=Xmax||y2<0){
+                double phi = horizon_elevation_angles[theta];
+                double dist = sqrt((v.x-x)*(v.x-x) + (v.y-y)*(v.y-y));
+                double phiMaxTheta = atan(5000.0/dist);      //maximal phi at this theta (with height 5000 m)
+                
+                if(y1>=Xmax||y1<0||y2>=Xmax||y2<0||phi>phiMaxTheta){
                     break;
                 }
                 if((int)y%(int)Resolution){                       //if y is not a grid point
@@ -332,10 +386,10 @@ int main(int ac, char** av) {
         
         
         std::vector<double> total_sun;
-        total_sun.assign(12, 0.0);
+        total_sun.assign(TimesPerYear, 0.0);
         double sun_intensity = 0;
         
-        for(int j=0;j<12;j++){
+        for(int j=0;j<TimesPerYear;j++){
             for (k=0;k<SunAngles;k++) {
                 //           thetas[k]=k;
                 //           phisD[k]=horizon_elevation_angles[k]*180/M_PI;
@@ -353,11 +407,11 @@ int main(int ac, char** av) {
             Min_Sun[j] = (total_sun[j] < Min_Sun[j])?total_sun[j]:Min_Sun[j];
             //std::cout <<"total_sun["<<j <<"]: "<<total_sun[j]<<" pair.second["<<j <<"]: "<<pair.second[j]<<std::endl;
         }
-        assert(total_sun.size() == 12);
+        assert(total_sun.size() == TimesPerYear);
         locations[v]=total_sun;
 //        std::cout <<"total_sun[0]: "<<total_sun[0]<<" locations[v][0]: "<<locations[v][0]<<std::endl;
         //vL = total_sun;
-        assert(pair.second.size() == 12);
+        assert(pair.second.size() == TimesPerYear);
         
         
         //std::cout <<"interior_points: "<<interior_points <<" edge_points: "<<edge_points<<std::endl;
@@ -383,10 +437,10 @@ int main(int ac, char** av) {
     std::cout << locations.size() << std::endl;
     std::cout <<"Max_Sun: "<<Max_Sun[5]<<"Min_Sun: "<<Min_Sun[5]<<std::endl;
     
-    for(int k = 0; k < 12; ++k){
+    for(int k = 0; k < TimesPerYear; ++k){
         std::ostringstream oss("");
         oss << k;
-        std::ofstream ofs("./Month" + oss.str() + ".txt");
+        std::ofstream ofs(OutputFile + oss.str() + ".xyz");
         if (!ofs.is_open()){
             exit(-2);
         }

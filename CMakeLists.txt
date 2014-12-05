@@ -7,6 +7,7 @@ find_package(Boost 1.54.0 REQUIRED COMPONENTS
 	filesystem
 	system
 	iostreams
+	program_options
 )
 
 include_directories(
@@ -16,12 +17,15 @@ include_directories(
 
 add_executable(CrunchGeoData
 	sources/crunch.cpp
+	sources/import_heightmap.hpp
+	sources/swiss_to_lat_lon.hpp
 	sources/vector3d.hpp
 	sources/position.hpp
 )
 
 add_executable(LightImage
 	sources/light.cpp
+	sources/swiss_to_lat_lon.hpp
 	sources/vector3d.hpp
 	sources/position.hpp
 )

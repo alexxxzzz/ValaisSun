@@ -3,7 +3,7 @@
   <head>
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
     <meta charset="utf-8">
-    <title>Adding a Custom Overlay</title>
+    <title>Valais Sun Overlay</title>
     <style>
       html, body, #map-canvas {
         height: 100%;
@@ -30,17 +30,17 @@ function initialize() {
   var mapOptions = {
     zoom: 9,
     center: new google.maps.LatLng(46.26463, 7.58391),
-    mapTypeId: google.maps.MapTypeId.SATELLITE
+    mapTypeId: google.maps.MapTypeId.MAP
   };
 
   var map = new google.maps.Map(document.getElementById('map-canvas'), mapOptions);
 
-  var swBound = new google.maps.LatLng(45.86556, 6.69439);
-  var neBound = new google.maps.LatLng(46.65661, 8.48644);
+  var swBound = new google.maps.LatLng(45.8664683, 6.69566776);
+  var neBound = new google.maps.LatLng(46.6557264, 8.48511559);
   var bounds = new google.maps.LatLngBounds(swBound, neBound);
 
   // June overlay
-  var srcImage = 'https://lh5.googleusercontent.com/-Meq1i5cBV0M/VEzjGcLbd-I/AAAAAAAACGY/nrIwSDX-wwc/w689-h440-no/OverlayMonth5.png';
+  var srcImage = 'https://lh5.googleusercontent.com/-IkfgHjRpK9E/VE60PKnubiI/AAAAAAAACHY/mga8eaf_vLw/w689-h440-no/Overlay5.png';
 
   // The custom ValaisSunOverlay object contains the image,
   // the bounds of the image, and a reference to the map.
