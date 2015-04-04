@@ -29,8 +29,8 @@ void import_heightmap(std::string input_file, double south_bound, double north_b
             y_min = y<y_min?y:y_min;
             
             vec.y=-vec.y;              //y component of vector is direction WEST
-                                      //x component of vector is direction NORTH
-                                     //THETA ANGLES are from North to West axis
+                                       //x component of vector is direction NORTH
+                                       //THETA ANGLES are from North to West axis
 
             std::vector<double> t(times_per_year);
             locations.insert(std::make_pair(vec, t));         //Locations is unordered_set of all points in bounding box

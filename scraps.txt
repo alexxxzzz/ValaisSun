@@ -14,3 +14,59 @@ gp.send1d(boost::make_tuple(pts_theta,sun_intensity_with_normal));
 //    vector3d Normal2= ((vW-v)^(vS-v)).norm();
 
 //   std::cout << "Norm: " << Normal << " Norm1: " << Normal1 << " Norm2: " << Normal2 << std::endl;
+
+
+//    std::vector<double> pts_theta(sun_angles);   //vector used for plotting the suns elevation, x-vector, hours
+//    std::vector<double> pts_thElv_y(sun_angles);  //vector used for plotting the suns elevation, y-vector, elevation angle
+//    std::vector<double> pts_dx(sun_angles);
+//    std::vector<double> pts_dy(sun_angles);
+
+// vector3d v(Ntest, Wtest,0);
+// auto it_v = locations.find(v);          //get our test vector
+
+//  if (it_v == locations.end()){
+//      std::cout <<"Testpoint not found"<< std::endl;
+//      exit(-1);
+//  }
+
+
+//double air_mass_coefficient =sqrt(708.0*708.0*sin(phiElv)*sin(phiElv)+2.0*708.0+1.0)-708.0*sin(phiElv);  //wikipedia
+
+
+
+
+//                        sun_intensity_day_angle[(int)Month][indTH]=pow(0.7,pow(air_mass_coefficient,0.678))/0.7;  //stick sun intensity in its datastructure
+
+//        std::cout <<"total_sun[0]: "<<total_sun[0]<<" locations[v][0]: "<<locations[v][0]<<std::endl;
+//vL = total_sun;
+
+//std::cout <<"interior_points: "<<interior_points <<" edge_points: "<<edge_points<<std::endl;
+
+
+/*    Gnuplot gp2;
+gp2 << "set xrange [0:360]\nset yrange [-60:90]\n";
+gp2 << "plot '-' with lines, '-' with vectors\n";
+gp2.send1d(boost::make_tuple(thetas, phisD));
+gp2.send1d(boost::make_tuple(pts_theta, pts_thElv_y, pts_dx, pts_dy));
+
+Gnuplot gp3;
+gp3 << "set xrange [0:360]\nset yrange [-1:1]\n";
+gp3 << "plot '-' with lines\n";
+gp3.send1d(boost::make_tuple(thetas, Sun_Intensity_All_Inclusive));
+*/
+
+
+//    gp2.send1d(boost::make_tuple(thetas, dists));
+
+//    gp2.send1d(boost::make_tuple(pts_Hour_theta, pts_thElv_y));
+
+
+//            std::vector<double>& vL=pair.second;
+//            std::cout <<"vL.size(): "<<vL.size()<<"pair.second.size(): "<<pair.second.size()<<std::endl;
+
+//std::cout <<"total_sun["<<j <<"]: "<<total_sun[j]<<" pair.second["<<j <<"]: "<<pair.second[j]<<std::endl;
+
+//                ofs << locations[v][k] << std::endl;
+
+
+

@@ -22,6 +22,13 @@ add_executable(CrunchGeoData
 	sources/vector3d.hpp
 	sources/position.hpp
 )
+add_executable(ComputeHorizons
+    sources/compute_horizons.cpp
+    sources/import_heightmap.hpp
+    sources/swiss_to_lat_lon.hpp
+    sources/vector3d.hpp
+    sources/position.hpp
+)
 
 add_executable(LightImage
 	sources/light.cpp

@@ -25,12 +25,11 @@ bool EQ_DBL(double a, double b){
 
 
 
-const double thLat=46.26*M_PI/180.0;
 
 
 int main(int ac, char** av) {
     //Variables to be assigned by program options
-    double Resolution;
+    double height_map_resolution;
     double north_bound;
     double south_bound;
     double east_bound;
@@ -38,6 +37,14 @@ int main(int ac, char** av) {
     int sun_angles;
     int times_per_year;
     int start_day;
+    double summer_angle_panel;
+    double winter_angle_panel;
+    bool use_terrain_normals = true;
+    bool compute_best_fixed_angle = false;
+    bool compute_best_summer_winter_angle = false;
+    bool compute_horizon = false;
+
+    
     std::string input_file;
     std::string output_file;
     bool verbose = false;
@@ -49,7 +56,7 @@ int main(int ac, char** av) {
     ("help", "print options table")
     ("input-file,i", po::value<std::string>(&input_file), "File containing height map data in x<space>y<space>z<newline> swiss coordinates format")
     ("output-file-base,o", po::value<std::string>(&output_file)->default_value("data_out"), "Base filname for output files (default data_out)")
-    ("resolution,R", po::value<double>(&Resolution)->default_value(200.0), "resolution of data (default: 200.0)")
+    ("resolution,R", po::value<double>(&height_map_resolution)->default_value(200.0), "resolution of data (default: 200.0)")
     ("nmax",po::value<double>(&north_bound)->default_value(1e100), "maximum north coordinate to be treated (default 1e100)")
     ("nmin",po::value<double>(&south_bound)->default_value(-1e100), "minimum north coordinate to be treated (default -1e100)")
     ("emax",po::value<double>(&east_bound)->default_value(1e100), "maximum east coordinate to be treated (default 1e100)")
@@ -58,6 +65,12 @@ int main(int ac, char** av) {
     ("sunangles,s", po::value<int>(&sun_angles)->default_value(360), "number of angles to compute sunlight from (default 360)")
     ("times,t", po::value<int>(&times_per_year)->default_value(12), "number of times per year to calculate at (default 12)")
     ("start-day, D", po::value<int>(&start_day)->default_value(20), "Day of the year to output first data. (default 20)")
+    ("fixed-angle, F", po::value<double>(&summer_angle_panel), "Use fixed angle for solar panel inclination to compute sun intensity.")
+    ("summer-angle", po::value<double>(&summer_angle_panel), "Fixed angle for solar panel inclination during summer to compute sun intensity..")
+    ("winter-angle", po::value<double>(&winter_angle_panel), "Fixed angle for solar panel inclination during winter to compute sun intensity..")
+    ("best-fixed-angle, B", "Use best fixed angle for this latitude to compute sun intensity.")
+    ("best-two-season-angles, BSW", "Use best summer and winter angle for this latitude to compute sun intensity.")
+    ("terrain-normals, T", "Use terrain normal for each point to compute sun intensity, default option if none of the solar panel angles options are specified.")
     ("verbose, v", "Verbose: output lots of text")
     ;
     
@@ -72,6 +85,23 @@ int main(int ac, char** av) {
         std::cout <<"CrunchGeoData [options] [input file] [output base]"<<std::endl<< op_desc << std::endl;
         return 1;
     }
+    if(vm.count("fixed-angle")){
+        winter_angle_panel = summer_angle_panel;
+        use_terrain_normals = false;
+    }
+    if(vm.count("summer-angle") && !vm.count("winter-angle")){
+        std::cout << "Please specify also a winter angle, or use option fixed-angle" << std::endl;
+        exit(255);
+    }
+    if(vm.count("best-fixed-angle")){
+        use_terrain_normals = false;
+        compute_best_fixed_angle = true;
+    }
+    if(vm.count("best-two-season-angles")){
+        use_terrain_normals = false;
+        compute_best_summer_winter_angle = true;
+    }
+    
     if (vm.count("elevation")){
         elevation_dependant_sun_intensity = true;
     }
@@ -84,110 +114,134 @@ int main(int ac, char** av) {
     }
     
     
-    std::unordered_map<vector3d, std::vector<double>, hash> locations;   //Locations is unordered_set of all points in bounding box
+    std::unordered_map<vector3d, std::vector<double>, hash> grid_points;   //grid_points is unordered_map of all points in bounding box with
+                                                                            //a vector to hold average sun power for the days sun is computed
     
     double north_x_max;
     double east_y_max;
     double south_x_min;
     double west_y_min;
     
-    import_heightmap(input_file, south_bound, north_bound, east_bound, west_bound, times_per_year, locations ,north_x_max, south_x_min, east_y_max, west_y_min);
+    import_heightmap(input_file, south_bound, north_bound, east_bound, west_bound,
+                     times_per_year, grid_points ,north_x_max, south_x_min, east_y_max, west_y_min);
     
     
-    std::pair<double,double> NE = swiss_to_lat_lon(north_x_max+Resolution/2.0, east_y_max+Resolution/2.0);
-    std::pair<double,double> SW = swiss_to_lat_lon(south_x_min-Resolution/2.0, west_y_min-Resolution/2.0);
+    std::pair<double,double> NE = swiss_to_lat_lon(north_x_max+height_map_resolution/2.0, east_y_max+height_map_resolution/2.0);
+    std::pair<double,double> SW = swiss_to_lat_lon(south_x_min-height_map_resolution/2.0, west_y_min-height_map_resolution/2.0);
     
     std::cout << "NE: " << north_x_max <<", " << east_y_max << " SW: "<< south_x_min << " , " << west_y_min <<  std::endl;
     std::cout << std::setprecision(9) << "NE: " << NE.first <<", " << NE.second << " SW: "<< SW.first << ", " << SW.second <<  std::endl;
-    std::cout << "Number of points in dataset: " << locations.size() << std::endl;
+    std::cout << "Number of points in dataset: " << grid_points.size() << std::endl;
     
-    std::vector<std::vector<double> > earth_axis_angle(times_per_year,std::vector<double>(sun_angles));  //Elevation angle PHI of Earth's axis for a month(22nd) and hour
-    std::vector<std::vector<double> > sun_intensity_month_angle(times_per_year,std::vector<double>(sun_angles));
-    std::vector<double> pts_theta(sun_angles);   //vector used for plotting the suns elevation, x-vector, hours
-    std::vector<double> pts_thElv_y(sun_angles);  //vector used for plotting the suns elevation, y-vector, elevation angle
-    std::vector<double> pts_dx(sun_angles);
-    std::vector<double> pts_dy(sun_angles);
+    double average_latitude=((NE.first+SW.first)/2.0)*M_PI/180.0;
+    vector3d summer_normal_panel;
+    vector3d winter_normal_panel;
+
+    if(!use_terrain_normals){
+        if(compute_best_fixed_angle){
+        }
+        if(compute_best_summer_winter_angle){
+        }
+        if(average_latitude > 0){  //if latitude is greater than zero, point south
+            summer_normal_panel.x = -1*sin(summer_angle_panel*M_PI/180);
+            summer_normal_panel.y = 0;
+            summer_normal_panel.z = 1*cos(summer_angle_panel*M_PI/180);
+
+            winter_normal_panel.x = -1*sin(winter_angle_panel*M_PI/180);
+            winter_normal_panel.y = 0;
+            winter_normal_panel.z = 1*cos(winter_angle_panel*M_PI/180);
+        }
+        else{  //if latitude is less than zero, point north
+            summer_normal_panel.x = 1*sin(summer_angle_panel*M_PI/180);
+            summer_normal_panel.y = 0;
+            summer_normal_panel.z = 1*cos(summer_angle_panel*M_PI/180);
+            
+            winter_normal_panel.x = 1*sin(winter_angle_panel*M_PI/180);
+            winter_normal_panel.y = 0;
+            winter_normal_panel.z = 1*cos(winter_angle_panel*M_PI/180);
+        }
+
+    }
     
-    std::vector<std::vector <vector3d> > sun_vec_month_angle(times_per_year,std::vector<vector3d>(sun_angles));  //Unit vectors for sun's direction in month(22nd), hour.
+    
+    std::vector<std::vector<double> > sun_elevation_angle(times_per_year,std::vector<double>(sun_angles));
+    //Elevation angle PHI of sun for a day and hour
+    
+    std::vector<std::vector<double> > sun_intensity_day_angle(times_per_year,std::vector<double>(sun_angles));
+    
+    std::vector<std::vector <vector3d> > sun_vec_day_angle(times_per_year,std::vector<vector3d>(sun_angles));
+    //Unit vectors for sun's direction in day, hour.
     
     
-    for(int Month = 0; Month < times_per_year; Month++){
-        double N=(365.0*Month)/times_per_year+start_day;  //We are computing values for the Nth day of the year
-        double phiAxMonth=-asin(0.39779*cos((0.98565*(N+10)+1.914*sin(0.98565*(N-2)*M_PI/180))*M_PI/180));  //Earth axis inclination for day N
+    for(int day = 0; day < times_per_year; day++){
+        double N=(365.0*day)/times_per_year+start_day;  //We are computing values for the Nth day of the year
+        double phi_axis=-asin(0.39779*cos((0.98565*(N+10)+1.914*sin(0.98565*(N-2)*M_PI/180))*M_PI/180));  //Earth axis inclination for day N
         for(int thH=0;thH<sun_angles;thH++){//Angle theta for sun; 0 is North, +90 is West.
             int indTH= thH;
             double thHrad = (180-thH)*M_PI/180.0;  //turn around for sun formula angle
-            double phiElv=asin(sin(thLat)*sin(phiAxMonth)+cos(thLat)*cos(thHrad)*cos(phiAxMonth));  //Sun elevation, imperical fomula, see wikipedia
+            double phiElv=asin(sin(average_latitude)*sin(phi_axis)+cos(average_latitude)*cos(thHrad)*cos(phi_axis));  //Sun elevation, imperical fomula, see wikipedia
             
             thHrad = M_PI-thHrad;          //In our coordinate system (North x+, West y+) we must inverse the sun theta. Theta corresponds to sun ray direction.
             
             vector3d sun_vec(cos(phiElv) * cos(thHrad) , cos(phiElv) * sin(thHrad) , sin(phiElv));  //Unit vector for direction sun ray come from
-            earth_axis_angle[(int)Month][indTH]=phiElv;  //stick sun elevation in its datastructure
+            sun_elevation_angle[(int)day][indTH]=phiElv;  //stick sun elevation in its datastructure
             
-            sun_vec_month_angle[(int)Month][indTH]=sun_vec;  //stick sun vector in its datastructure
+            sun_vec_day_angle[(int)day][indTH]=sun_vec;  //stick sun vector in its datastructure
             
             double air_mass_coefficient =sqrt(708.0*708.0*sin(phiElv)*sin(phiElv)+2.0*708.0+1.0)-708.0*sin(phiElv);  //wikipedia
-            sun_intensity_month_angle[(int)Month][indTH]=pow(0.7,pow(air_mass_coefficient,0.678))/0.7;  //stick sun intensity in its datastructure
+            sun_intensity_day_angle[(int)day][indTH]=pow(0.7,pow(air_mass_coefficient,0.678))/0.7;  //stick sun intensity in its datastructure
         }
     }
     
     
     
     
-    // vector3d v(Ntest, Wtest,0);
-    // auto it_v = locations.find(v);          //get our test vector
-    
-    //  if (it_v == locations.end()){
-    //      std::cout <<"Testpoint not found"<< std::endl;
-    //      exit(-1);
-    //  }
-    std::vector<double> Max_Sun;
-    Max_Sun.assign(times_per_year, 0);
-    std::vector<double> Min_Sun;
-    Min_Sun.assign(times_per_year, 1e12);
+    std::vector<double> max_sun_intensity;
+    max_sun_intensity.assign(times_per_year, 0);
+    std::vector<double> min_sun_intensity;
+    min_sun_intensity.assign(times_per_year, 1e12);
     
     
     int N=0;
     
-    std::cout <<"MAX: "<<Max_Sun[5]<<"   MIN: "<<Min_Sun[5]<<"   Progress: "<< 100*(N*1.0)/(locations.size()*1.0) <<" %    \n";
+    std::cout <<"   Progress: "<< 100*(N*1.0)/(grid_points.size()*1.0) <<" %    \n";
     
-    for(auto pair : locations){
-        vector3d v = pair.first;
-        //        std::vector<double>& vL=pair.second;
+    for(auto grid_point : grid_points){
+        vector3d v = grid_point.first;
         N++;
         
         if (1) {
-            std::cout <<"MAX: "<<Max_Sun[5]<<"   MIN: "<<Min_Sun[5]<<"   Progress: "<< 100.0*(N*1.0)/(locations.size()*1.0) <<" %  ("<<N<<")    \r";
+            std::cout <<"   Progress: "<< 100.0*(N*1.0)/(grid_points.size()*1.0) <<" %  ("<<N<<")    \r";
             std::cout.flush();
         }
-        vector3d vNx(v.x+Resolution*10,v.y,0);            //get points 10xresolution to the north, west, south and east
-        vector3d vWx(v.x,v.y+Resolution*10,0);
-        vector3d vSx(v.x-Resolution*10,v.y,0);
-        vector3d vEx(v.x,v.y-Resolution*10,0);
-        auto itEx=locations.find(vEx);
-        auto itNx=locations.find(vNx);
-        auto itWx=locations.find(vWx);
-        auto itSx=locations.find(vSx);
-        if (itEx == locations.end()||itNx == locations.end()||itWx == locations.end()||itSx == locations.end()){
+        vector3d vNx(v.x+height_map_resolution*10,v.y,0);            //get points 10xresolution to the north, west, south and east
+        vector3d vWx(v.x,v.y+height_map_resolution*10,0);
+        vector3d vSx(v.x-height_map_resolution*10,v.y,0);
+        vector3d vEx(v.x,v.y-height_map_resolution*10,0);
+        auto itEx=grid_points.find(vEx);
+        auto itNx=grid_points.find(vNx);
+        auto itWx=grid_points.find(vWx);
+        auto itSx=grid_points.find(vSx);
+        if (itEx == grid_points.end()||itNx == grid_points.end()||itWx == grid_points.end()||itSx == grid_points.end()){
             std::vector<double> L;
-            L.assign(times_per_year,-1.0);
-            locations[v]=L;
+            L.assign(times_per_year,-1.0);  //border points get value -1.0 to indicate we have coputed no value for them
+            grid_points[v]=L;
             continue;
         }
         
         //v = *it_v;
         
-        vector3d vN(v.x+Resolution,v.y,0);            //get points to the north, west, south and east
-        vector3d vW(v.x,v.y+Resolution,0);
-        vector3d vS(v.x-Resolution,v.y,0);
-        vector3d vE(v.x,v.y-Resolution,0);
+        vector3d vN(v.x+height_map_resolution,v.y,0);            //get points to the north, west, south and east
+        vector3d vW(v.x,v.y+height_map_resolution,0);
+        vector3d vS(v.x-height_map_resolution,v.y,0);
+        vector3d vE(v.x,v.y-height_map_resolution,0);
         
-        auto itE=locations.find(vE);
-        auto itN=locations.find(vN);
-        auto itW=locations.find(vW);
-        auto itS=locations.find(vS);
+        auto itE=grid_points.find(vE);
+        auto itN=grid_points.find(vN);
+        auto itW=grid_points.find(vW);
+        auto itS=grid_points.find(vS);
         
-        if (itE == locations.end()||itN == locations.end()||itW == locations.end()||itS == locations.end()){
+        if (itE == grid_points.end()||itN == grid_points.end()||itW == grid_points.end()||itS == grid_points.end()){
             exit(-1);
         }
         
@@ -198,7 +252,7 @@ int main(int ac, char** av) {
         
         vector3d Normal = ((((vE-v)^(vN-v))+((vW-v)^(vS-v)))/2).norm();       //normal is the crossproduct of two prependicular differences. Avgd.
         
-       
+        
         std::vector<double> horizon_elevation_angles;   //vector to hold elevation angles at theta
         horizon_elevation_angles.assign(sun_angles, 0);
         //    std::vector<vector3d> horizon(sun_angles);
@@ -212,10 +266,10 @@ int main(int ac, char** av) {
             {
                 double sin_theta = sin(th);   //calculate sin of the angle in radians
                 double yend = EQ_DBL(copysign(1,sin_theta),1)?east_y_max:0;     //if the sinus is positive endvalue is east_y_max, if negative 0
-                for(double y=v.y+copysign(Resolution,sin_theta);(y >= 0 && y <= east_y_max);y+=copysign(Resolution,sin_theta)){//increase/decrease if theta +/-
+                for(double y=v.y+copysign(height_map_resolution,sin_theta);(y >= 0 && y <= east_y_max);y+=copysign(height_map_resolution,sin_theta)){//increase/decrease if theta +/-
                     double x = v.x+(y-v.y)/tan(th);                             //find the x that goes with y for this theta
-                    double x1 = floor(x-((int)x%(int)Resolution));       //find the nearest lower gridpoint by subtracting remainder according to Resolution
-                    double x2 = x1 + Resolution;                  //Add Resolution to get nearest higher gridpoint
+                    double x1 = floor(x-((int)x%(int)height_map_resolution));       //find the nearest lower gridpoint by subtracting remainder according to height_map_resolution
+                    double x2 = x1 + height_map_resolution;                  //Add height_map_resolution to get nearest higher gridpoint
                     double phi = horizon_elevation_angles[theta];
                     double dist = (v-vector3d(x,y,v.z)).length();
                     double phiMaxTheta = atan(5000.0/dist);      //maximal phi at this theta (with height 5000 m)
@@ -224,24 +278,20 @@ int main(int ac, char** av) {
                     if(x1>=north_x_max||x1<0||x2>=north_x_max||x2<0||phi>phiMaxTheta){
                         break;
                     }
-                    if((int)x%(int)Resolution){                       //if x is not a grid point
+                    if((int)x%(int)height_map_resolution){                       //if x is not a grid point
                         
-                        //std::cout << vector3d(x1,y,0) << ", " << vector3d(x2,y,0) << " , " << x << std::endl;
-                        auto it_vec1 = locations.find(vector3d(x1,y,0));      //get the two gridpoints from the set
-                        auto it_vec2 = locations.find(vector3d(x2,y,0));
-                        if (it_vec1 == locations.end()||it_vec2 == locations.end()){
-                            //exit(-1);
-                            
-                            // std::cout <<(it_vec1 == locations.end())<<(it_vec2 == locations.end())<<"theta: "<<theta<<" y: "<<y<<", x1: "<<x1<<", x2: "<<x2<<" oops north_x_max: "<<north_x_max<< ", east_y_max: " << east_y_max << std::endl;
+                        auto it_vec1 = grid_points.find(vector3d(x1,y,0));      //get the two gridpoints from the set
+                        auto it_vec2 = grid_points.find(vector3d(x2,y,0));
+                        if (it_vec1 == grid_points.end()||it_vec2 == grid_points.end()){
                             edge_points++;
                             continue;
                         }
                         vector3d vec1 = it_vec1->first;
                         vector3d vec2 = it_vec2->first;
-                        double height = vec1.z*(x2-x)/Resolution + vec2.z*(x-x1)/Resolution-v.z;       //compute height at x via linear interpolation
+                        double height = vec1.z*(x2-x)/height_map_resolution + vec2.z*(x-x1)/height_map_resolution-v.z;       //compute height at x via linear interpolation
                         dist=(v-vector3d(x,y,v.z)).length();
                         phi = atan(height/dist);
-                        //std::cout <<height<< ", " << dist << " , " << phi << std::endl;
+
                         if(phi>horizon_elevation_angles[theta]){//see if larger
                             horizon_elevation_angles[theta]=phi;
                             dists[theta] = dist/1000;
@@ -249,8 +299,8 @@ int main(int ac, char** av) {
                         
                     }
                     else{//if x is a gridpoint
-                        auto it_vec = locations.find(vector3d(x,y,0));  //get vector
-                        if (it_vec == locations.end()){
+                        auto it_vec = grid_points.find(vector3d(x,y,0));  //get vector
+                        if (it_vec == grid_points.end()){
                             //exit(-1);
                             edge_points++;
                             continue;
@@ -271,10 +321,10 @@ int main(int ac, char** av) {
             double cos_theta = cos(th);
             double xend = EQ_DBL(copysign(1,cos_theta),1)?north_x_max:0;     //if the cosinus is positive endvalue is north_x_max, if negative 0
             
-            for(double x=v.x+copysign(Resolution,cos_theta);(x >= 0 && x <= north_x_max);x+=copysign(Resolution,cos_theta)){//increase/decrease if theta +/-
+            for(double x=v.x+copysign(height_map_resolution,cos_theta);(x >= 0 && x <= north_x_max);x+=copysign(height_map_resolution,cos_theta)){//increase/decrease if theta +/-
                 double y = v.y+(x-v.x)*tan(th);                             //find the y that goes with x for this theta
-                double y1 = floor(y-((int)y%(int)Resolution));       //find the nearest lower gridpoint by subtracting remainder according to Resolution
-                double y2 = y1 + Resolution;                  //Add Resolution to get nearest higher gridpoint
+                double y1 = floor(y-((int)y%(int)height_map_resolution));       //find the nearest lower gridpoint by subtracting remainder according to height_map_resolution
+                double y2 = y1 + height_map_resolution;                  //Add height_map_resolution to get nearest higher gridpoint
                 double phi = horizon_elevation_angles[theta];
                 double dist = sqrt((v.x-x)*(v.x-x) + (v.y-y)*(v.y-y));
                 double phiMaxTheta = atan(5000.0/dist);      //maximal phi at this theta (with height 5000 m)
@@ -282,17 +332,17 @@ int main(int ac, char** av) {
                 if(y1>=north_x_max||y1<0||y2>=north_x_max||y2<0||phi>phiMaxTheta){
                     break;
                 }
-                if((int)y%(int)Resolution){                       //if y is not a grid point
-                    auto it_vec1 = locations.find(vector3d(x,y1,0));      //get the two gridpoints from the set
-                    auto it_vec2 = locations.find(vector3d(x,y2,0));
-                    if (it_vec1 == locations.end()||it_vec2 == locations.end()){
+                if((int)y%(int)height_map_resolution){                       //if y is not a grid point
+                    auto it_vec1 = grid_points.find(vector3d(x,y1,0));      //get the two gridpoints from the set
+                    auto it_vec2 = grid_points.find(vector3d(x,y2,0));
+                    if (it_vec1 == grid_points.end()||it_vec2 == grid_points.end()){
                         //exit(-1);
                         edge_points++;
                         continue;
                     }
                     vector3d vec1 = it_vec1->first;
                     vector3d vec2 = it_vec2->first;
-                    double height = vec1.z*(y2-y)/Resolution + vec2.z*(y-y1)/Resolution-v.z;       //compute height at y via linear interpolation
+                    double height = vec1.z*(y2-y)/height_map_resolution + vec2.z*(y-y1)/height_map_resolution-v.z;       //compute height at y via linear interpolation
                     double dist=(v-vector3d(x,y,v.z)).length();
                     double phi = atan(height/dist);
                     if(phi>horizon_elevation_angles[theta]){//see if larger
@@ -302,8 +352,8 @@ int main(int ac, char** av) {
                     
                 }
                 else{//if y is a gridpoint
-                    auto it_vec = locations.find(vector3d(x,y,0));  //get vector
-                    if (it_vec == locations.end()){
+                    auto it_vec = grid_points.find(vector3d(x,y,0));  //get vector
+                    if (it_vec == grid_points.end()){
                         //exit(-1);
                         edge_points++;
                         continue;
@@ -331,100 +381,64 @@ int main(int ac, char** av) {
         
         int k = 0;
         
-        std::vector<double> total_sun;
-        total_sun.assign(times_per_year, 0.0);
+        std::vector<double> average_sun_intensity;
+        average_sun_intensity.assign(times_per_year, 0.0);
         double sun_intensity = 0;
         
         for(int j=0;j<times_per_year;j++){
             for (k=0;k<sun_angles;k++) {
-                //           thetas[k]=k;
-                //           phisD[k]=horizon_elevation_angles[k]*180/M_PI;
-                if(horizon_elevation_angles[k]>earth_axis_angle[j][k]){
+                if(horizon_elevation_angles[k]>sun_elevation_angle[j][k]){
                     sun_intensity=0;
                 }
                 else{
-                    if(elevation_dependant_sun_intensity){        //spherical shell approximation for air mass attenuation, see wikipedia
-                                                                // http://en.wikipedia.org/wiki/Air_mass_%28solar_energy%29
-                        double phi = earth_axis_angle[j][k];
-                        double height = v.z;
-                        double R_E = 6371000.0;      //Earth radius, meters
-                        double y_atm = 9000.0;       //Athmospheric thickness, meters
-                        double r = R_E/y_atm;
-                        double c = height/y_atm;
-                        double air_mass_coefficient = sqrt((r+c)*(r+c)*cos(phi)*cos(phi) + (2*r+1+c)*(1-c))-(r+c)*cos(phi);
-                        double I_0 = 1.353; // kW/m^2
-                        double I = 1.1 * I_0 * pow(0.7, pow(air_mass_coefficient, 0.678));
-                        
-
-                        
-                        //double air_mass_coefficient =sqrt(708.0*708.0*sin(phiElv)*sin(phiElv)+2.0*708.0+1.0)-708.0*sin(phiElv);  //wikipedia
-                        
-                        
-                        
-                        
-//                        sun_intensity_month_angle[(int)Month][indTH]=pow(0.7,pow(air_mass_coefficient,0.678))/0.7;  //stick sun intensity in its datastructure
-                        
-                        
+                    double height = 0;
+                    if(elevation_dependant_sun_intensity){
+                        height = v.z;
                     }
-                    else{
-                        sun_intensity= std::abs(sun_vec_month_angle[j][k]*Normal)*sun_intensity_month_angle[j][k];
-                    }
+                    //spherical shell approximation for air mass attenuation, see wikipedia
+                    // http://en.wikipedia.org/wiki/Air_mass_%28solar_energy%29
+                    double phi = sun_elevation_angle[j][k];
+                    double R_E = 6371000.0;      //Earth radius, meters
+                    double y_atm = 9000.0;       //Athmospheric thickness, meters
+                    double r = R_E/y_atm;
+                    double c = height/y_atm;
+                    double air_mass_coefficient = sqrt((r+c)*(r+c)*cos(phi)*cos(phi) + (2*r+1+c)*(1-c))-(r+c)*cos(phi);
+                    double I_0 = 1.353; // kW/m^2
+                    double I = 1.1 * I_0 * pow(0.7, pow(air_mass_coefficient, 0.678));
+                    sun_intensity = I * (sun_vec_day_angle[j][k] * Normal);
+                    
+                    average_sun_intensity[j]+=sun_intensity;
+                    
                 }
-                total_sun[j]+=sun_intensity;
-                
+                average_sun_intensity[j] = average_sun_intensity[j] / sun_angles;
+                grid_point.second[j]=average_sun_intensity[j];
+                max_sun_intensity[j] = (average_sun_intensity[j] > max_sun_intensity[j])?average_sun_intensity[j]:max_sun_intensity[j];
+                min_sun_intensity[j] = (average_sun_intensity[j] < min_sun_intensity[j])?average_sun_intensity[j]:min_sun_intensity[j];
             }
-            pair.second[j]=total_sun[j];
-            Max_Sun[j] = (total_sun[j] > Max_Sun[j])?total_sun[j]:Max_Sun[j];
-            Min_Sun[j] = (total_sun[j] < Min_Sun[j])?total_sun[j]:Min_Sun[j];
-            //std::cout <<"total_sun["<<j <<"]: "<<total_sun[j]<<" pair.second["<<j <<"]: "<<pair.second[j]<<std::endl;
+            assert(average_sun_intensity.size() == times_per_year);
+            grid_points[v]=average_sun_intensity;
+            
+            assert(grid_point.second.size() == times_per_year);
+            
+            
         }
-        assert(total_sun.size() == times_per_year);
-        locations[v]=total_sun;
-        //        std::cout <<"total_sun[0]: "<<total_sun[0]<<" locations[v][0]: "<<locations[v][0]<<std::endl;
-        //vL = total_sun;
-        assert(pair.second.size() == times_per_year);
-        
-        
-        //std::cout <<"interior_points: "<<interior_points <<" edge_points: "<<edge_points<<std::endl;
-        
-        
-        /*    Gnuplot gp2;
-         gp2 << "set xrange [0:360]\nset yrange [-60:90]\n";
-         gp2 << "plot '-' with lines, '-' with vectors\n";
-         gp2.send1d(boost::make_tuple(thetas, phisD));
-         gp2.send1d(boost::make_tuple(pts_theta, pts_thElv_y, pts_dx, pts_dy));
-         
-         Gnuplot gp3;
-         gp3 << "set xrange [0:360]\nset yrange [-1:1]\n";
-         gp3 << "plot '-' with lines\n";
-         gp3.send1d(boost::make_tuple(thetas, Sun_Intensity_All_Inclusive));
-         */
-        
-        
-        //    gp2.send1d(boost::make_tuple(thetas, dists));
-        
-        //    gp2.send1d(boost::make_tuple(pts_Hour_theta, pts_thElv_y));
     }
-    std::cout << locations.size() << std::endl;
-    std::cout <<"Max_Sun: "<<Max_Sun[5]<<"Min_Sun: "<<Min_Sun[5]<<std::endl;
+        std::cout << grid_points.size() << std::endl;
     
-    for(int k = 0; k < times_per_year; ++k){
-        std::ostringstream oss("");
-        oss << k;
-        std::ofstream ofs(output_file + oss.str() + ".xyz");
-        if (!ofs.is_open()){
-            exit(-2);
-        }
-        for(auto pair : locations){
-            vector3d v = pair.first;
-            //            std::vector<double>& vL=pair.second;
-            //            std::cout <<"vL.size(): "<<vL.size()<<"pair.second.size(): "<<pair.second.size()<<std::endl;
-            if(pair.second.size()>k){
-                ofs << v.x << " " << v.y << " " << v.z << " ";
-                ofs << (locations[v][k]-Min_Sun[k])/(Max_Sun[k]-Min_Sun[k]) << std::endl;
-                //                ofs << locations[v][k] << std::endl;
+        for(int k = 0; k < times_per_year; ++k){
+            std::ostringstream oss("");
+            oss << k;
+            std::ofstream ofs(output_file + oss.str() + ".xyz");
+            if (!ofs.is_open()){
+                exit(-2);
+            }
+            for(auto grid_point : grid_points){
+                vector3d v = grid_point.first;
+                if(grid_point.second.size()>k){
+                    ofs << v.x << " " << v.y << " " << v.z << " ";
+                    ofs << grid_points[v][k] << std::endl;
+                }
             }
         }
+        return 0;
     }
-    return 0;
-}
