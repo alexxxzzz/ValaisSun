@@ -42,7 +42,6 @@ int main(int ac, char** av) {
     bool use_terrain_normals = true;
     bool compute_best_fixed_angle = false;
     bool compute_best_summer_winter_angle = false;
-    bool compute_horizon = false;
 
     
     std::string input_file;

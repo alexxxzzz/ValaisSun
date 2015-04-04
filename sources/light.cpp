@@ -12,7 +12,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "vector3d.hpp"
-#include "Swiss_To_LatLon.hpp"
+#include "swiss_to_lat_lon.hpp"
 
 //const double Emin=542200;   //Valais
 //const double Emax=680200;

@@ -24,18 +24,18 @@ add_executable(CrunchGeoData
 )
 add_executable(ComputeHorizons
     sources/compute_horizons.cpp
-    sources/import_heightmap.hpp
+    sources/import_heightmap_horizon.hpp
     sources/swiss_to_lat_lon.hpp
     sources/vector3d.hpp
     sources/position.hpp
 )
 
-add_executable(LightImage
-	sources/light.cpp
-	sources/swiss_to_lat_lon.hpp
-	sources/vector3d.hpp
-	sources/position.hpp
-)
+#add_executable(LightImage
+#	sources/light.cpp
+#	sources/swiss_to_lat_lon.hpp
+#	sources/vector3d.hpp
+#	sources/position.hpp
+#)
 
 find_library(OPENCV_CORE_LIB
     opencv_core
@@ -52,15 +52,19 @@ find_library(OPENGL_LIB
 	OpenGL
 )
 
+target_link_libraries(ComputeHorizons
+${Boost_LIBRARIES}
+)
+
 target_link_libraries(CrunchGeoData
 	${OPENGL_LIB}
 	${Boost_LIBRARIES}
 )	
 
-target_link_libraries(LightImage
-	${OPENGL_LIB}
-	${Boost_LIBRARIES}
-    ${OPENCV_CORE_LIB}
-    ${OPENCV_IMGPROC_LIB}
-    ${OPENCV_HIGHGUI_LIB}
-)	
+#target_link_libraries(LightImage
+#	${OPENGL_LIB}
+#	${Boost_LIBRARIES}
+#    ${OPENCV_CORE_LIB}
+#    ${OPENCV_IMGPROC_LIB}
+#    ${OPENCV_HIGHGUI_LIB}
+#)
