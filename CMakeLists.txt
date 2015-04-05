@@ -10,6 +10,8 @@ find_package(Boost 1.54.0 REQUIRED COMPONENTS
 	program_options
 )
 
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -openmp")
+
 include_directories(
 	/opt/local/include
 	${PROJECT_SOURCE_DIR}/gnuplot-iostream

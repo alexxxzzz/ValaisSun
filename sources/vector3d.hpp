@@ -23,6 +23,9 @@ struct vector3d{
     double length() const{
         return sqrt(*this * *this);
     }
+    double angle(const vector3d& vec) const{
+        return acos((*this * vec)/((*this).length() * vec.length()));
+    }
     vector3d operator ^ (const vector3d& vec) const{
         return vector3d(y*vec.z-z*vec.y, z*vec.x-x*vec.z,x*vec.y-y*vec.x);
     }
