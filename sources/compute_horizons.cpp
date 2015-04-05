@@ -29,7 +29,7 @@ bool EQ_DBL(double a, double b){
 
 int main(int ac, char** av) {
     //Variables to be assigned by program options
-    bool test = true;
+    bool test = false;
     double height_map_resolution;
     double north_bound;
     double south_bound;
@@ -108,7 +108,7 @@ int main(int ac, char** av) {
     
     int N=0;
     
-    std::cout <<"   Progress: "<< 100*(N*1.0)/(grid_points.size()*1.0) <<" %    \n";
+    //std::cout <<"   Progress: "<< 100*(N*1.0)/(grid_points.size()*1.0) <<" %    \n";
     
 //    std::ofstream ofs(output_file);    //open output file
     std::ofstream ofs;
@@ -118,6 +118,8 @@ int main(int ac, char** av) {
         std::cout << "Can't open output file" << std::endl;
         exit(-2);
     }
+    
+    time_t start_time  = time(NULL);
     
     for(auto grid_point : grid_points){
         vector3d v = grid_point.first;
@@ -138,7 +140,16 @@ int main(int ac, char** av) {
         N++;
         
         if (1) {
-            std::cout <<"   Progress: "<< 100.0*(N*1.0)/(grid_points.size()*1.0) <<" %  ("<<N<<")    \r";
+            double run_time = difftime(time(NULL), start_time);
+            int rhours = (int)floor(run_time/3600.0);
+            int rminutes = (int)floor((run_time-rhours*3600.0)/60.0);
+            int rseconds = (int)floor(run_time-rhours*3600.0-rminutes*60.0);
+            double remaining_time = ((grid_points.size() - N)*1.0)*run_time/(N*1.0);
+            int hours = (int)floor(remaining_time/3600.0);
+            int minutes = (int)floor((remaining_time-hours*3600.0)/60.0);
+            int seconds = (int)floor(remaining_time-hours*3600.0-minutes*60.0);
+            double progress = round(1000.0*100.0*(N*1.0)/(grid_points.size()*1.0))/1000.0;
+            std::cout <<"   Progress: "<< progress <<" %  ("<<N<<")  time: "<<rhours<<":"<<rminutes<<":"<<rseconds<<" time left: "<<hours<<":"<<minutes<<":"<<seconds<<"      \r";
             std::cout.flush();
         }
         vector3d vNx(v.x+height_map_resolution*10,v.y,0);            //get points 10x resolution to the north, west, south and east
@@ -316,14 +327,15 @@ int main(int ac, char** av) {
         for(int k=0;k<horizon_angles;k++){
             ofs << horizon_elevation_angles[k] << " ";
             ofs << dists[k] << " ";
-            ofs << hozpoints[k] << std::endl;
+            //ofs << hozpoints[k] << std::endl;
         }
         if(test){
             break;
         }
+        ofs.flush();
+        ofs << std::endl;
         
     }
-    ofs << std::endl;
     std::cout << grid_points.size() << std::endl;
     return 0;
 }
