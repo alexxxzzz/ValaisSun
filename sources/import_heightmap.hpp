@@ -1,3 +1,4 @@
+#pragma once
 
 void import_heightmap(std::string input_file, double south_bound, double north_bound, double east_bound, double west_bound, int times_per_year,
                       std::unordered_map<vector3d, std::vector<double>, hash>& locations ,

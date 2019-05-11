@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 
 project(ValaisSun)
 
-find_package(Boost 1.54.0 REQUIRED COMPONENTS
+find_package(Boost 1.66.0 REQUIRED COMPONENTS
 	thread
 	filesystem
 	system
@@ -14,7 +14,7 @@ find_package(Boost 1.54.0 REQUIRED COMPONENTS
 
 include_directories(
 	/opt/local/include
-	${PROJECT_SOURCE_DIR}/gnuplot-iostream
+#	${PROJECT_SOURCE_DIR}/gnuplot-iostream
 )
 
 add_executable(CrunchGeoData
@@ -24,6 +24,7 @@ add_executable(CrunchGeoData
 	sources/vector3d.hpp
 	sources/position.hpp
 )
+
 add_executable(ComputeHorizons
     sources/compute_horizons.cpp
     sources/import_heightmap_horizon.hpp
@@ -55,7 +56,7 @@ find_library(OPENGL_LIB
 )
 
 target_link_libraries(ComputeHorizons
-${Boost_LIBRARIES}
+    ${Boost_LIBRARIES}
 )
 
 target_link_libraries(CrunchGeoData

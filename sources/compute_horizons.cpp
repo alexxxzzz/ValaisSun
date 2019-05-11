@@ -7,7 +7,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <cmath>
-#include <gnuplot-iostream.h>
+// #include <gnuplot-iostream.h>
 #include <assert.h>
 #include <boost/program_options.hpp>
 
@@ -102,7 +102,7 @@ int main(int ac, char** av) {
     std::pair<double,double> SW = swiss_to_lat_lon(south_x_min-height_map_resolution/2.0, west_y_min-height_map_resolution/2.0);
     
     std::cout << "NE: " << north_x_max <<", " << east_y_max << " SW: "<< south_x_min << " , " << west_y_min <<  std::endl;
-    std::cout << std::setprecision(9) << "NE: " << NE.first <<", " << NE.second << " SW: "<< SW.first << ", " << SW.second <<  std::endl;
+    std::cout /*<< std::setprecision(9)*/ << "NE: " << NE.first <<", " << NE.second << " SW: "<< SW.first << ", " << SW.second <<  std::endl;
     std::cout << "Number of points in dataset: " << grid_points.size() << std::endl;
     
 //    double average_latitude=((NE.first+SW.first)/2.0)*M_PI/180.0;
