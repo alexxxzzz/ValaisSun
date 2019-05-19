@@ -7,10 +7,12 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <cmath>
+#include <algorithm>
+
 // #include <gnuplot-iostream.h>
 #include <assert.h>
 #include <boost/program_options.hpp>
-
+#include <boost/filesystem.hpp>
 
 #include "vector3d.hpp"
 #include "swiss_to_lat_lon.hpp"
@@ -21,6 +23,19 @@
 namespace po = boost::program_options;
 
 
+class pos_hoz {
+public:
+    vector3d pos;
+    vector3d norm;
+    std::vector<signed short> elevation_angles;
+    std::vector<unsigned char> distances;
+    void write(std::ofstream& ofs) const {
+        ofs.write((char*)&pos, sizeof(vector3d));
+        ofs.write((char*)&norm, sizeof(vector3d));
+        ofs.write((char*)&elevation_angles[0], sizeof(short)*elevation_angles.size());
+        ofs.write((char*)&distances[0], distances.size());
+    }
+};
 
 bool EQ_DBL(double a, double b){
     return std::abs(a-b)<EPS_DBL;
@@ -40,10 +55,10 @@ int main(int ac, char** av) {
     double west_bound;
     int horizon_angles;
     bool elevation_dependant_sun_intensity;
-    
+    double tile_size;
     
     std::string input_file;
-    std::string output_file;
+    std::string output_dir;
     bool verbose = false;
     
     // Declare the supported options.
@@ -51,8 +66,9 @@ int main(int ac, char** av) {
     op_desc.add_options()
     ("help", "print options table")
     ("input-file,i", po::value<std::string>(&input_file), "File containing height map data in x<space>y<space>z<newline> swiss coordinates format")
-    ("output-file,o", po::value<std::string>(&output_file)->default_value("data_out.hoz"), "Filname for output file (default data_out.hoz)")
+    ("output-dir,o", po::value<std::string>(&output_dir), "Directory for output files (default data_out_<date_time>)")
     ("resolution,R", po::value<double>(&height_map_resolution)->default_value(200.0), "resolution of data (default: 200.0)")
+    ("tile-size, T", po::value<double>(&tile_size)->default_value(40), "Output files will have size tile_size x tile_size (default 40)")
     ("nmax",po::value<double>(&north_bound)->default_value(1e100), "maximum north coordinate to be treated (default 1e100)")
     ("nmin",po::value<double>(&south_bound)->default_value(-1e100), "minimum north coordinate to be treated (default -1e100)")
     ("emax",po::value<double>(&east_bound)->default_value(1e100), "maximum east coordinate to be treated (default 1e100)")
@@ -84,7 +100,22 @@ int main(int ac, char** av) {
         std::cout << "Input file must be specified" << std::endl;
         exit(255);
     }
+    if(!vm.count("output-dir")){
+        std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        std::string time_string(30, 0);
+        std::strftime(&time_string[0], time_string.size(), "%Yx%mx%dT%Hx%Mx%S", std::localtime(&now));
+        output_dir = std::string("hoz_out_")+time_string;
+        std::cout << "Output directory will be: "+output_dir << std::endl;
+    }
     
+    //create output directory
+    boost::filesystem::path dir(output_dir);
+    if(!boost::filesystem::create_directory(dir)) {
+        std::cout << "Failed to creat output directory" << "\n";
+        exit(255);
+    }
+    
+
     
     std::unordered_map<vector3d, vector3d , hash> grid_points;   //grid_points is unordered_map of all points in bounding box with
     //a vector to hold the normal
@@ -109,19 +140,15 @@ int main(int ac, char** av) {
     
     
     
-    int N=0;
-    
-    //std::cout <<"   Progress: "<< 100*(N*1.0)/(grid_points.size()*1.0) <<" %    \n";
+//std::cout <<"   Progress: "<< 100*(N*1.0)/(grid_points.size()*1.0) <<" %    \n";
     
 //    std::ofstream ofs(output_file);    //open output file
-    std::ofstream ofs;
-    ofs.open(output_file);    //open output file
-
-    if (!ofs.is_open()){
-        std::cout << "Can't open output file" << std::endl;
-        exit(-2);
-    }
     
+    int N=0;
+
+    
+    std::string file_name;
+    std::ofstream ofs;
     time_t start_time  = time(NULL);
     
     for(auto grid_point : grid_points){
@@ -132,6 +159,7 @@ int main(int ac, char** av) {
             double x_test = height_map_resolution*floor(126243.0/height_map_resolution);
             auto it_v = grid_points.find(vector3d(x_test,y_test,0));      //get the two gridpoint from the set
             std::cout << "Test point: " << x_test <<" "<< y_test << std::endl;
+            std::cout << "Resolution: " << height_map_resolution << ", tile size: "<< tile_size << std::endl;
             if (it_v == grid_points.end()){
                 std::cout << "Test point not found" << std::endl;
                 exit(-3);
@@ -325,18 +353,47 @@ int main(int ac, char** av) {
             
             
         }
-        ofs << v << " ";
-        ofs << Normal << " ";
+        std::string tile_name;
+        int tile_x = floor(v.x/(tile_size*height_map_resolution))*tile_size*height_map_resolution;
+        int tile_y = floor(v.y/(tile_size*height_map_resolution))*tile_size*height_map_resolution;
+        tile_name = output_dir + std::string("/tile_") + std::to_string(tile_x) + std::string("_") + std::to_string(tile_y) + std::string(".hoz");
+        std::cout << "tile_name " << tile_name << std::endl;
+        //std::string("./") +
+        
+        
+        
+        if(file_name.compare(tile_name)!=0){
+            if(ofs.is_open())
+                ofs.close();
+            file_name = tile_name;
+            std::cout << "file_name " << file_name << std::endl;
+            ofs.open(file_name, std::iostream::out | std::iostream::app | std::iostream::binary);
+   //open output file
+            if (!ofs.is_open()){
+                std::cout << "Can't open output file " << file_name << std::endl;
+                exit(-2);
+            }
+        }
+        pos_hoz outputs;
+        outputs.pos = v;
+        outputs.norm = Normal;
+//        ofs << v.x << v.y << v.z;
+//        ofs << Normal;
         for(int k=0;k<horizon_angles;k++){
-            ofs << horizon_elevation_angles[k] << " ";
-            ofs << dists[k] << " ";
+            outputs.elevation_angles.push_back(horizon_elevation_angles[k]*32767/(M_PI/2));
+            char dst = (char) (dists[k]>255?255:dists[k]);
+            outputs.distances.push_back(dst);
+ //           ofs << horizon_elevation_angles[k];
+  //          ofs << dists[k];
             //ofs << hozpoints[k] << std::endl;
         }
+        outputs.write(ofs);
+        //ofs.write((char*)outputs, (horizon_angles*2+6)*sizeof(double));
         if(test){
             break;
         }
         ofs.flush();
-        ofs << std::endl;
+        //ofs << std::endl;
         
     }
     std::cout << grid_points.size() << std::endl;
