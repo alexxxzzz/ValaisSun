@@ -165,7 +165,7 @@ int main(int ac, char** av) {
     pos_hoz tile_points[tile_size*tile_size];
     
     for(int x_tile = 0;x_tile<N_tiles_x; x_tile++){
-# pragma omp parallal for
+ #pragma omp parallel for
         for(int y_tile = 0; y_tile<N_tiles_y;y_tile++){
             double coord_x = (first_tile_x + height_map_resolution*tile_size*x_tile);
             double coord_x_end = coord_x+height_map_resolution*tile_size;
