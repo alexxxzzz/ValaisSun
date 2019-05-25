@@ -191,8 +191,8 @@ int main(int ac, char** av) {
                     
                     if (grid_points.is_end(itv) ||grid_points.is_end(itE) || grid_points.is_end(itN) || grid_points.is_end(itW) || grid_points.is_end(itS)){
                         coord_y = coord_y + height_map_resolution;
-                        tile_points[tile_point].pos = vector3d(0,0,0);
-                        tile_point++;
+                        //tile_points[tile_point].pos = vector3d(0,0,0);
+                        //tile_point++;
                         continue;
                         //if one of the neighboring points are not found we continue with the next point
                     }
@@ -248,7 +248,7 @@ int main(int ac, char** av) {
                 if (!ofs.is_open()){
                     std::cout << "Can't open output file " << tile_name << std::endl;
                 }
-                ofs.write((char*)&tile_points[0], sizeof(pos_hoz)*tile_size*tile_size);
+                ofs.write((char*)&tile_points[0], sizeof(pos_hoz)*tile_point);
                 ofs.flush();
                 ofs.close();
                 NT++;
