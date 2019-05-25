@@ -163,14 +163,14 @@ int main(int ac, char** av) {
     int N_tiles_y = (int) ceil((grid_points.ymax()-grid_points.ymin()-20.0*height_map_resolution)/tile_size);
     
     pos_hoz tile_points[tile_size*tile_size];
-    bool tile_empty = true;
     
     for(int x_tile = 0;x_tile<N_tiles_x; x_tile++){
+# pragma omp parallal for
         for(int y_tile = 0; y_tile<N_tiles_y;y_tile++){
             double coord_x = (first_tile_x + height_map_resolution*tile_size*x_tile);
             double coord_x_end = coord_x+height_map_resolution*tile_size;
             int tile_point = 0;
-            tile_empty = true;
+            bool tile_empty = true;
             while(coord_x < coord_x_end){
                 double coord_y = (first_tile_y + height_map_resolution*tile_size*y_tile);
                 double coord_y_end = coord_y+height_map_resolution*tile_size;
