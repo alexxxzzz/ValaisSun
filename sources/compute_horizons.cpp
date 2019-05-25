@@ -212,7 +212,7 @@ int main(int ac, char** av) {
                     N++;
                     coord_y = coord_y + height_map_resolution;
                     tile_point++;
-                    if (N%10==0) {
+                    if (N%40==0) {
                         double run_time = difftime(time(NULL), start_time);
                         int rdays = (int)floor(run_time/86400.0);
                         int rhours = (int)floor((run_time-rdays*86400)/3600.0);
