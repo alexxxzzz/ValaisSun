@@ -163,17 +163,19 @@ int main(int ac, char** av) {
     int N_tiles_y = (int) ceil((grid_points.ymax()-grid_points.ymin()-20.0*height_map_resolution)/tile_size);
     
     pos_hoz tile_points[tile_size*tile_size];
-
+    bool tile_empty = true;
+    
     for(int x_tile = 0;x_tile<N_tiles_x; x_tile++){
         for(int y_tile = 0; y_tile<N_tiles_y;y_tile++){
             double coord_x = (first_tile_x + height_map_resolution*tile_size*x_tile);
             double coord_x_end = coord_x+height_map_resolution*tile_size;
             int tile_point = 0;
+            tile_empty = true;
             while(coord_x < coord_x_end){
                 double coord_y = (first_tile_y + height_map_resolution*tile_size*y_tile);
                 double coord_y_end = coord_y+height_map_resolution*tile_size;
                 while(coord_y < coord_y_end){
-
+                    
                     //get point and points to the north, west, south and east
                     vector3d v(coord_x, coord_y, 0.0);
                     vector3d vN(v.x+height_map_resolution,v.y,0);
@@ -209,6 +211,7 @@ int main(int ac, char** av) {
                         double phi = grid_points.compute_elevation_angle(v,theta, height_map_resolution, 360.0/horizon_angles);
                         tile_points[tile_point].elevation_angles[theta] = (short)((phi / M_PI_2) * std::numeric_limits<short>::max());
                     }
+                    tile_empty = false;
                     N++;
                     coord_y = coord_y + height_map_resolution;
                     tile_point++;
@@ -229,25 +232,27 @@ int main(int ac, char** av) {
                             std::cout.flush();
                         }
                     }
-
+                    
                 }
                 coord_x = coord_x + height_map_resolution;
             }
-            std::string tile_name;
-            int tile_x = (first_tile_x + height_map_resolution*tile_size*x_tile);
-            int tile_y = (first_tile_y + height_map_resolution*tile_size*y_tile);
-            tile_name = output_dir + std::string("/tile_") + std::to_string(tile_x) + std::string("_") + std::to_string(tile_y) + std::string(".hoz");
-//            std::cout << std::endl << "tile_name " << tile_name << std::endl;
-            ofs.open(tile_name, std::iostream::out | std::iostream::binary);
-//            std::cout << "first point" << tile_points[0].pos << "norm: " << tile_points[0].norm<< std::endl;
-            //open output file
-            if (!ofs.is_open()){
-                std::cout << "Can't open output file " << tile_name << std::endl;
+            if(!tile_empty){
+                std::string tile_name;
+                int tile_x = (first_tile_x + height_map_resolution*tile_size*x_tile);
+                int tile_y = (first_tile_y + height_map_resolution*tile_size*y_tile);
+                tile_name = output_dir + std::string("/tile_") + std::to_string(tile_x) + std::string("_") + std::to_string(tile_y) + std::string(".hoz");
+                //            std::cout << std::endl << "tile_name " << tile_name << std::endl;
+                ofs.open(tile_name, std::iostream::out | std::iostream::binary);
+                //            std::cout << "first point" << tile_points[0].pos << "norm: " << tile_points[0].norm<< std::endl;
+                //open output file
+                if (!ofs.is_open()){
+                    std::cout << "Can't open output file " << tile_name << std::endl;
+                }
+                ofs.write((char*)&tile_points[0], sizeof(pos_hoz)*tile_size*tile_size);
+                ofs.flush();
+                ofs.close();
+                NT++;
             }
-            ofs.write((char*)&tile_points[0], sizeof(pos_hoz)*tile_size*tile_size);
-            ofs.flush();
-            ofs.close();
-            NT++;
             
         }
     }
