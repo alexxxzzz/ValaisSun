@@ -212,6 +212,24 @@ int main(int ac, char** av) {
                     N++;
                     coord_y = coord_y + height_map_resolution;
                     tile_point++;
+                    if (N%10==0) {
+                        double run_time = difftime(time(NULL), start_time);
+                        int rdays = (int)floor(run_time/86400.0);
+                        int rhours = (int)floor((run_time-rdays*86400)/3600.0);
+                        int rminutes = (int)floor((run_time-rdays*86400.0-rhours*3600.0)/60.0);
+                        int rseconds = (int)floor(run_time-rdays*86400.0-rhours*3600.0-rminutes*60.0);
+                        double remaining_time = ((grid_points.size() - N)*1.0)*run_time/(N*1.0);
+                        int days = (int)floor(remaining_time/86400.0);
+                        int hours = (int)floor((remaining_time-days*86400)/3600.0);
+                        int minutes = (int)floor((remaining_time-days*86400-hours*3600.0)/60.0);
+                        int seconds = (int)floor(remaining_time-days*86400-hours*3600.0-minutes*60.0);
+                        double progress = round(1000.0*100.0*(N*1.0)/(grid_points.size()*1.0))/1000.0;
+                        if(N > 0){
+                            std::cout <<"   Progress: "<< progress <<" %  ("<<N<<", "<<NT<<")  time: "<<rdays<<"d"<<rhours<<":"<<rminutes<<":"<<rseconds<<" time left: "<<days<<"d"<<hours<<":"<<minutes<<":"<<seconds<<"      \r";
+                            std::cout.flush();
+                        }
+                    }
+
                 }
                 coord_x = coord_x + height_map_resolution;
             }
@@ -231,23 +249,6 @@ int main(int ac, char** av) {
             ofs.close();
             NT++;
             
-            if (1) {
-                double run_time = difftime(time(NULL), start_time);
-                int rdays = (int)floor(run_time/86400.0);
-                int rhours = (int)floor((run_time-rdays*86400)/3600.0);
-                int rminutes = (int)floor((run_time-rdays*86400.0-rhours*3600.0)/60.0);
-                int rseconds = (int)floor(run_time-rdays*86400.0-rhours*3600.0-rminutes*60.0);
-                double remaining_time = ((grid_points.size() - N)*1.0)*run_time/(N*1.0);
-                int days = (int)floor(remaining_time/86400.0);
-                int hours = (int)floor((remaining_time-days*86400)/3600.0);
-                int minutes = (int)floor((remaining_time-days*86400-hours*3600.0)/60.0);
-                int seconds = (int)floor(remaining_time-days*86400-hours*3600.0-minutes*60.0);
-                double progress = round(1000.0*100.0*(N*1.0)/(grid_points.size()*1.0))/1000.0;
-                if(N > 0){
-                    std::cout <<"   Progress: "<< progress <<" %  ("<<N<<", "<<NT<<")  time: "<<rdays<<"d"<<rhours<<":"<<rminutes<<":"<<rseconds<<" time left: "<<days<<"d"<<hours<<":"<<minutes<<":"<<seconds<<"      \r";
-                    std::cout.flush();
-                }
-            }
         }
     }
     return 0;
