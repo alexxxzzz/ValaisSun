@@ -27,7 +27,8 @@ add_executable(CrunchGeoData
 
 add_executable(ComputeHorizons
     sources/compute_horizons.cpp
-    sources/import_heightmap_horizon.hpp
+    sources/height_map.cpp
+    sources/height_map.hpp
     sources/swiss_to_lat_lon.hpp
     sources/vector3d.hpp
     sources/position.hpp

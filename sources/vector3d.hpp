@@ -26,6 +26,9 @@ struct vector3d{
     double angle(const vector3d& vec) const{
         return acos((*this * vec)/((*this).length() * vec.length()));
     }
+    double distxy(const vector3d& vec) const{
+        return sqrt((x-vec.x)*(x-vec.x)+(y-vec.y)*(y-vec.y));
+    }
     vector3d operator ^ (const vector3d& vec) const{
         return vector3d(y*vec.z-z*vec.y, z*vec.x-x*vec.z,x*vec.y-y*vec.x);
     }
@@ -58,7 +61,7 @@ struct vector3d{
     }
 };
 
-std::ostream& operator << (std::ostream& os, const vector3d& vec){
+inline std::ostream& operator << (std::ostream& os, const vector3d& vec){
     os << "<" << vec.x << ", " << vec.y << ", " << vec.z << ">";
     return os;
 }
