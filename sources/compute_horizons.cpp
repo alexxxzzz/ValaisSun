@@ -155,6 +155,7 @@ int main(int ac, char** av) {
     
     time_t start_time  = time(NULL);
     int N=0;
+    int NT=0;
     
     int first_tile_y = (int) (grid_points.ymin()+10.0*height_map_resolution);
     int first_tile_x = (int) (grid_points.xmin()+10.0*height_map_resolution);
@@ -228,6 +229,7 @@ int main(int ac, char** av) {
             ofs.write((char*)&tile_points[0], sizeof(pos_hoz)*tile_size*tile_size);
             ofs.flush();
             ofs.close();
+            NT++;
             
             if (1) {
                 double run_time = difftime(time(NULL), start_time);
@@ -242,7 +244,7 @@ int main(int ac, char** av) {
                 int seconds = (int)floor(remaining_time-days*86400-hours*3600.0-minutes*60.0);
                 double progress = round(1000.0*100.0*(N*1.0)/(grid_points.size()*1.0))/1000.0;
                 if(N > 0){
-                    std::cout <<"   Progress: "<< progress <<" %  ("<<N<<")  time: "<<rdays<<"d"<<rhours<<":"<<rminutes<<":"<<rseconds<<" time left: "<<days<<"d"<<hours<<":"<<minutes<<":"<<seconds<<"      \r";
+                    std::cout <<"   Progress: "<< progress <<" %  ("<<N<<", "<<NT<<")  time: "<<rdays<<"d"<<rhours<<":"<<rminutes<<":"<<rseconds<<" time left: "<<days<<"d"<<hours<<":"<<minutes<<":"<<seconds<<"      \r";
                     std::cout.flush();
                 }
             }
