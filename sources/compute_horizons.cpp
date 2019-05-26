@@ -165,10 +165,10 @@ int main(int ac, char** av) {
     last_tile_y = last_tile_y * (tile_size*height_map_resolution);
     int last_tile_x = (int) floor(grid_points.xmax()/(tile_size*height_map_resolution));
     last_tile_x = last_tile_x * (tile_size*height_map_resolution);
-    int N_tiles_x = (last_tile_x - first_tile_x + 1)/(tile_size*height_map_resolution);
-    int N_tiles_y = (last_tile_y - first_tile_y + 1)/(tile_size*height_map_resolution);
+    int N_tiles_x = (last_tile_x - first_tile_x )/(tile_size*height_map_resolution) + 1;
+    int N_tiles_y = (last_tile_y - first_tile_y )/(tile_size*height_map_resolution) + 1;
     
-    std::cout << "FTy " << first_tile_y << "LTy" << last_tile_y << " FTx " << first_tile_x << " LTx " << last_tile_x << std::endl;
+    std::cout << "FTy " << first_tile_y << " LTy " << last_tile_y << " FTx " << first_tile_x << " LTx " << last_tile_x << std::endl;
     std::cout << "calculating " << N_tiles_x << " x " << N_tiles_y << " tiles = " << N_tiles_x*N_tiles_y << " total" << std::endl;
 
     pos_hoz tile_points[tile_size*tile_size];
