@@ -157,11 +157,20 @@ int main(int ac, char** av) {
     int N=0;
     int NT=0;
     
-    int first_tile_y = (int) grid_points.ymin();
-    int first_tile_x = (int) grid_points.xmin();
-    int N_tiles_x = (int) ceil((grid_points.xmax()-grid_points.xmin())/tile_size);
-    int N_tiles_y = (int) ceil((grid_points.ymax()-grid_points.ymin())/tile_size);
+    int first_tile_y = (int) floor(grid_points.ymin()/(tile_size*height_map_resolution));
+    first_tile_y = first_tile_y * (tile_size*height_map_resolution);
+    int first_tile_x = (int) floor(grid_points.xmin()/(tile_size*height_map_resolution));
+    first_tile_x = first_tile_x * (tile_size*height_map_resolution);
+    int last_tile_y = (int) floor(grid_points.ymax()/(tile_size*height_map_resolution));
+    last_tile_y = last_tile_y * (tile_size*height_map_resolution);
+    int last_tile_x = (int) floor(grid_points.xmax()/(tile_size*height_map_resolution));
+    last_tile_x = last_tile_x * (tile_size*height_map_resolution);
+    int N_tiles_x = (last_tile_x - first_tile_x + 1)/(tile_size*height_map_resolution);
+    int N_tiles_y = (last_tile_y - first_tile_y + 1)/(tile_size*height_map_resolution);
     
+    std::cout << "FTy " << first_tile_y << "LTy" << last_tile_y << " FTx " << first_tile_x << " LTx " << last_tile_x << std::endl;
+    std::cout << "calculating " << N_tiles_x << " x " << N_tiles_y << " tiles = " << N_tiles_x*N_tiles_y << " total" << std::endl;
+
     pos_hoz tile_points[tile_size*tile_size];
     
     for(int x_tile = 0;x_tile<N_tiles_x; x_tile++){

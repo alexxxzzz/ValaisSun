@@ -52,7 +52,6 @@ std::unordered_set<vector3d, hash>::const_iterator height_map::find_point(vector
 
 double height_map::compute_elevation_angle(vector3d point, double theta, double height_map_resolution, double angular_resolution){
     double resolution_distance = height_map_resolution / tan(angular_resolution*M_PI/180.0);
-    double phi = - M_PI_2;   //start our output elevation angle at maximum negative
     double sin_theta = sin(theta*M_PI/180.0);
     double cos_theta = cos(theta*M_PI/180.0);
     //double tan_theta = tan(theta*M_PI/180.0);
@@ -69,6 +68,9 @@ double height_map::compute_elevation_angle(vector3d point, double theta, double 
         throw std::runtime_error("point not found"); //error if not found
     }
     point = *found_point;
+    
+    double phi = -acos(6378000/(6378000+point.z));   //start our output elevation angle at maximum negative
+    
     double x_coord = x_step;
     double y_coord = y_step;
     double max_dist = 1e50;
