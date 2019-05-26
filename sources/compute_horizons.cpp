@@ -157,15 +157,14 @@ int main(int ac, char** av) {
     int N=0;
     int NT=0;
     
-    int first_tile_y = (int) (grid_points.ymin()+10.0*height_map_resolution);
-    int first_tile_x = (int) (grid_points.xmin()+10.0*height_map_resolution);
-    int N_tiles_x = (int) ceil((grid_points.xmax()-grid_points.xmin()-20.0*height_map_resolution)/tile_size);
-    int N_tiles_y = (int) ceil((grid_points.ymax()-grid_points.ymin()-20.0*height_map_resolution)/tile_size);
+    int first_tile_y = (int) grid_points.ymin();
+    int first_tile_x = (int) grid_points.xmin();
+    int N_tiles_x = (int) ceil((grid_points.xmax()-grid_points.xmin())/tile_size);
+    int N_tiles_y = (int) ceil((grid_points.ymax()-grid_points.ymin())/tile_size);
     
     pos_hoz tile_points[tile_size*tile_size];
     
     for(int x_tile = 0;x_tile<N_tiles_x; x_tile++){
- #pragma omp parallel for
         for(int y_tile = 0; y_tile<N_tiles_y;y_tile++){
             double coord_x = (first_tile_x + height_map_resolution*tile_size*x_tile);
             double coord_x_end = coord_x+height_map_resolution*tile_size;
@@ -191,8 +190,6 @@ int main(int ac, char** av) {
                     
                     if (grid_points.is_end(itv) ||grid_points.is_end(itE) || grid_points.is_end(itN) || grid_points.is_end(itW) || grid_points.is_end(itS)){
                         coord_y = coord_y + height_map_resolution;
-                        //tile_points[tile_point].pos = vector3d(0,0,0);
-                        //tile_point++;
                         continue;
                         //if one of the neighboring points are not found we continue with the next point
                     }
@@ -215,28 +212,30 @@ int main(int ac, char** av) {
                     N++;
                     coord_y = coord_y + height_map_resolution;
                     tile_point++;
-                    if (N%40==0) {
-                        double run_time = difftime(time(NULL), start_time);
-                        int rdays = (int)floor(run_time/86400.0);
-                        int rhours = (int)floor((run_time-rdays*86400)/3600.0);
-                        int rminutes = (int)floor((run_time-rdays*86400.0-rhours*3600.0)/60.0);
-                        int rseconds = (int)floor(run_time-rdays*86400.0-rhours*3600.0-rminutes*60.0);
-                        double remaining_time = ((grid_points.size() - N)*1.0)*run_time/(N*1.0);
-                        int days = (int)floor(remaining_time/86400.0);
-                        int hours = (int)floor((remaining_time-days*86400)/3600.0);
-                        int minutes = (int)floor((remaining_time-days*86400-hours*3600.0)/60.0);
-                        int seconds = (int)floor(remaining_time-days*86400-hours*3600.0-minutes*60.0);
-                        double progress = round(1000.0*100.0*(N*1.0)/(grid_points.size()*1.0))/1000.0;
-                        if(N > 0){
-                            std::cout <<"   Progress: "<< progress <<" %  ("<<N<<", "<<NT<<")  time: "<<rdays<<"d"<<rhours<<":"<<rminutes<<":"<<rseconds<<" time left: "<<days<<"d"<<hours<<":"<<minutes<<":"<<seconds<<"      \r";
-                            std::cout.flush();
-                        }
-                    }
-                    
                 }
+                
                 coord_x = coord_x + height_map_resolution;
+                
+                if (1) {
+                    double run_time = difftime(time(NULL), start_time);
+                    int rdays = (int)floor(run_time/86400.0);
+                    int rhours = (int)floor((run_time-rdays*86400)/3600.0);
+                    int rminutes = (int)floor((run_time-rdays*86400.0-rhours*3600.0)/60.0);
+                    int rseconds = (int)floor(run_time-rdays*86400.0-rhours*3600.0-rminutes*60.0);
+                    double remaining_time = ((grid_points.size() - N)*1.0)*run_time/(N*1.0);
+                    int days = (int)floor(remaining_time/86400.0);
+                    int hours = (int)floor((remaining_time-days*86400)/3600.0);
+                    int minutes = (int)floor((remaining_time-days*86400-hours*3600.0)/60.0);
+                    int seconds = (int)floor(remaining_time-days*86400-hours*3600.0-minutes*60.0);
+                    double progress = round(1000.0*100.0*(N*1.0)/(grid_points.size()*1.0))/1000.0;
+                    if(N > 0){
+                        std::cout <<"   Progress: "<< progress <<" %  ("<<N<<", "<<NT<<")  time: "<<rdays<<"d"<<rhours<<":"<<rminutes<<":"<<rseconds<<" time left: "<<days<<"d"<<hours<<":"<<minutes<<":"<<seconds<<"      \r";
+                        std::cout.flush();
+                    }
+                }
+
             }
-            if(!tile_empty){
+            if(tile_point > 0){
                 std::string tile_name;
                 int tile_x = (first_tile_x + height_map_resolution*tile_size*x_tile);
                 int tile_y = (first_tile_y + height_map_resolution*tile_size*y_tile);

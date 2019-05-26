@@ -124,7 +124,7 @@ double height_map::compute_elevation_angle(vector3d point, double theta, double 
         if(phi2 > phi){
             phi = phi2;
             if(phi > EPS_DBL)
-                max_dist = h_max/tan(phi);
+                max_dist = (h_max-point.z)/tan(phi);
         }
 
     }
