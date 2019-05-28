@@ -1,6 +1,8 @@
 #ifndef VECTOR3D_HEADER_DEFINED
 #define VECTOR3D_HEADER_DEFINED
 
+//#include <boost/functional/hash.hpp>
+
 
 const double EPS_DBL = 1e-12;
 
@@ -68,7 +70,12 @@ inline std::ostream& operator << (std::ostream& os, const vector3d& vec){
 
 struct hash {
     size_t operator() (const vector3d& vec) const {
-        return (size_t)vec.y+((size_t)vec.x << 32);
+ //       size_t seed = 0;
+ //       boost::hash_combine(seed, vec.x);
+ //       boost::hash_combine(seed, vec.y);
+ //       return seed;
+    return std::hash<int>() ((int)(vec.y/25.0))+(((int)(vec.x/25.0)) << 16);
+        //        return (size_t)vec.y+((size_t)vec.x << 32);
     }
 };
 

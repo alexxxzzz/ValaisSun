@@ -11,16 +11,19 @@
 #include <unordered_set>
 #include "vector3d.hpp"
 
+using locset = std::unordered_set<vector3d, hash>;
+//using locset = std::set<vector3d>;   // OMG so very bad, do not use set!!!
+
 template <typename T> int sgn(T val) {
     return (T(0) < val) - (val < T(0));
 }
 
 class height_map {
-    std::unordered_set<vector3d, hash> locations;
+    locset locations;
     double x_max, x_min, y_max, y_min, h_max, h_min;
 public:
     height_map (std::ifstream&, double , double , double , double);
-    std::unordered_set<vector3d, hash>::const_iterator find_point(vector3d);
+    locset::const_iterator find_point(vector3d);
     double compute_elevation_angle(vector3d, double, double, double);
     int size(){
         return locations.size();
@@ -43,7 +46,7 @@ public:
     double hmin(){
         return h_min;
     }
-    bool is_end(std::unordered_set<vector3d, hash>::const_iterator point){
+    bool is_end(locset::const_iterator point){
         return (point == locations.end());
     }
 };

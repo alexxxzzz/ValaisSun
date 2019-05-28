@@ -46,7 +46,7 @@ height_map::height_map (std::ifstream& ifs, double south_bound, double north_bou
     }
 }
 
-std::unordered_set<vector3d, hash>::const_iterator height_map::find_point(vector3d point){
+locset::const_iterator height_map::find_point(vector3d point){
     return locations.find(point);
 }
 
@@ -70,12 +70,13 @@ double height_map::compute_elevation_angle(vector3d point, double theta, double 
     point = *found_point;
     
     double phi = -acos(6378000/(6378000+point.z));   //start our output elevation angle at maximum negative
+    double tan_phi = tan(phi);
     
     double x_coord = x_step;
     double y_coord = y_step;
     double max_dist = 1e50;
     double dist = 0;
-    double phi2;
+    double tan_phi2;
     while(dist<max_dist){
         double res_mult = (floor(dist/resolution_distance) + 1);
      //   std::cout << "theta = " << theta << " phi = " << phi << " dist = "<< dist << " max_dist = " << max_dist << std::endl;
@@ -85,7 +86,7 @@ double height_map::compute_elevation_angle(vector3d point, double theta, double 
                 break;
             vector3d v = *v_itr;
             dist = point.distxy(v);
-            phi2 = asin((v.z-point.z)/(dist));
+            tan_phi2 = (v.z-point.z)/(dist);
             x_coord = x_coord + x_step*res_mult;
             y_coord = y_coord + y_step*res_mult;
             
@@ -104,7 +105,7 @@ double height_map::compute_elevation_angle(vector3d point, double theta, double 
             vector3d v2 = *v2_itr;
             double height_difference = (abs(y_coord_x-y_1)/height_map_resolution)*v2.z+(abs(y_coord_x-(y_1+y_step))/height_map_resolution)*v1.z-point.z;
             dist = point.distxy(vector3d(point.x + x_coord, point.y + y_coord_x,0));
-            phi2 = asin(height_difference/dist);
+            tan_phi2 = height_difference/dist;
             x_coord = x_coord + x_step*res_mult;
         }
         else if(x_coord/cos_theta > y_coord/sin_theta){
@@ -120,13 +121,13 @@ double height_map::compute_elevation_angle(vector3d point, double theta, double 
             vector3d v2 = *v2_itr;
             double height_difference = (abs(x_coord_y-x_1)/height_map_resolution)*v2.z+(abs(x_coord_y-(x_1+x_step))/height_map_resolution)*v1.z-point.z;
             dist = point.distxy(vector3d(point.x + x_coord_y, point.y + y_coord,0));
-            phi2 = asin(height_difference/dist);
+            tan_phi2 = (height_difference/dist);
             y_coord = y_coord + y_step*res_mult;
         }
-        if(phi2 > phi){
-            phi = phi2;
-            if(phi > EPS_DBL)
-                max_dist = (h_max-point.z)/tan(phi);
+        if(tan_phi2 > tan_phi){
+            tan_phi = tan_phi2;
+            if(tan_phi > EPS_DBL)
+                max_dist = (h_max-point.z)/tan_phi;
         }
 
     }

@@ -214,7 +214,7 @@ int main(int ac, char** av) {
                     tile_points[tile_point].norm = Normal;
                     
                     for(int theta=0;theta<horizon_angles;theta++){
-                        double phi = grid_points.compute_elevation_angle(v,theta, height_map_resolution, 360.0/horizon_angles);
+                        double phi = atan(grid_points.compute_elevation_angle(v,theta, height_map_resolution, 360.0/horizon_angles));
                         tile_points[tile_point].elevation_angles[theta] = (short)((phi / M_PI_2) * std::numeric_limits<short>::max());
                     }
                     tile_empty = false;
