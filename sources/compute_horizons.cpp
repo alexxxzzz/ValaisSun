@@ -99,6 +99,7 @@ int main(int ac, char** av) {
         std::cout << "Failed to creat output directory" << "\n";
         exit(255);
     }
+
     std::ifstream ifs(input_file);
     if (!ifs.is_open())
         throw std::runtime_error("could not open file : " + std::string(input_file));
@@ -132,7 +133,10 @@ int main(int ac, char** av) {
         //        time_t start_time  = time(NULL);
         clock_t t = clock();
         for(int theta = theta_start;theta<theta_end;theta++){
-            elevation_angles[theta] = grid_points.compute_elevation_angle(v, theta, height_map_resolution, 1.0);
+            double phi = atan(grid_points.compute_elevation_angle(v,theta, height_map_resolution, 360.0/horizon_angles));
+            short phi_short = (short)((phi / M_PI_2) * std::numeric_limits<short>::max());
+            elevation_angles[theta] = phi_short;
+            
         }
         double run_time = ((double)(clock()-t))/CLOCKS_PER_SEC;
         //        double run_time = difftime(time(NULL), start_time);
@@ -259,6 +263,8 @@ int main(int ac, char** av) {
                 ofs.write((char*)&tile_points[0], sizeof(pos_hoz)*tile_point);
                 ofs.flush();
                 ofs.close();
+                if(NT%10==0)
+                    std::cout << std::endl;
                 NT++;
             }
             

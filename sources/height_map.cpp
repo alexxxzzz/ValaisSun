@@ -131,7 +131,7 @@ double height_map::compute_elevation_angle(vector3d point, double theta, double 
         }
 
     }
-    return phi;
+    return tan_phi;
 }
 
 
