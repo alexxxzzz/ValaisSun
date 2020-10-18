@@ -34,6 +34,15 @@ add_executable(ComputeHorizons
     sources/position.hpp
 )
 
+add_executable(MountainOutlines
+    sources/mountain_outline.cpp
+    sources/height_map.cpp
+    sources/height_map.hpp
+    sources/swiss_to_lat_lon.hpp
+    sources/vector3d.hpp
+    sources/position.hpp
+)
+
 #add_executable(LightImage
 #	sources/light.cpp
 #	sources/swiss_to_lat_lon.hpp

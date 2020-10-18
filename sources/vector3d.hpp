@@ -55,12 +55,6 @@ struct vector3d{
     bool operator == (const vector3d& vec) const{
         return (std::abs(x-vec.x)<EPS_DBL) && (std::abs(y-vec.y)<EPS_DBL);
     }
-    vector3d interpLin(const vector3d& vec1, const vector3d& vec2){
-        double dist1 = (this->x-vec1.x) * (this->x-vec1.x) + (this->y-vec1.y) * (this->y-vec1.y);
-        double dist2 = (this->x-vec2.x) * (this->x-vec2.x) + (this->y-vec2.y) * (this->y-vec2.y);
-        double h = vec1.z * dist1 / (dist1 + dist2) + vec2.z * dist2 / (dist1 + dist2);
-        return vector3d(this->x,this->y,h);
-    }
 };
 
 inline std::ostream& operator << (std::ostream& os, const vector3d& vec){

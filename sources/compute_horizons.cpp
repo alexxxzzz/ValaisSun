@@ -47,6 +47,7 @@ int main(int ac, char** av) {
     double east_bound;
     double west_bound;
     
+    double elevation_angles_tan[horizon_angles];
     
     std::string input_file;
     std::string output_dir;
@@ -217,10 +218,70 @@ int main(int ac, char** av) {
                     
                     tile_points[tile_point].norm = Normal;
                     
-                    for(int theta=0;theta<horizon_angles;theta++){
+/*                    for(int theta=0;theta<horizon_angles;theta++){
                         double phi = atan(grid_points.compute_elevation_angle(v,theta, height_map_resolution, 360.0/horizon_angles));
                         tile_points[tile_point].elevation_angles[theta] = (short)((phi / M_PI_2) * std::numeric_limits<short>::max());
                     }
+ */ //old crap for finding elevations for an angle
+
+                    //assign very negative tangent angle for the starting value
+                    for(int theta=0;theta<horizon_angles;theta++){
+                        elevation_angles_tan[theta] = -1e10;
+                    }
+                    //iterate over all points
+                    for (auto itr = grid_points.first_point(); itr != grid_points.last_point(); ++itr){
+                        vector3d v2 = *itr;
+                        int theta;
+                        if(EQ_DBL(v2.x,v.x)){
+                            if(v2.y>v.y){
+                                theta = 90;
+                            }
+                            else{
+                                theta = 270;
+                            }
+                            double hdiff = v2.z-v.z;
+                            double dxy = v.distxy(v2);
+                            elevation_angles_tan[theta] = hdiff / dxy;
+                        }
+                        if(EQ_DBL(v2.y,v.y)){
+                            if(v2.x>v.x){
+                                theta = 0;
+                            }
+                            else{
+                                theta = 180;
+                            }
+                            double hdiff = v2.z-v.z;
+                            double dxy = v.distxy(v2);
+                            elevation_angles_tan[theta] = hdiff / dxy;
+                        }
+                        // Find the four neighbours to our point
+                        vector3d v2N(v2.x+height_map_resolution,v2.y,0);
+                        vector3d v2W(v2.x,v2.y+height_map_resolution,0);
+                        vector3d v2S(v2.x-height_map_resolution,v2.y,0);
+                        vector3d v2E(v2.x,v2.y-height_map_resolution,0);
+                        auto itE=grid_points.find_point(v2E);
+                        auto itN=grid_points.find_point(v2N);
+                        auto itW=grid_points.find_point(v2W);
+                        auto itS=grid_points.find_point(v2S);
+                        v2E = *itE;
+                        v2N = *itN;
+                        v2W = *itW;
+                        v2S = *itS;
+
+                        //calculate the integral multiples of horizon_angles
+                        int v2th = ceil(horizon_angles*atan2(v2.y-v.y, v2.x-v.x)/(2*M_PI));
+                        int v2Nth = ceil(horizon_angles*atan2(v2N.y-v.y, v2N.x-v.x)/(2*M_PI));
+                        int v2Eth = ceil(horizon_angles*atan2(v2E.y-v.y, v2E.x-v.x)/(2*M_PI));
+                        int v2Sth = ceil(horizon_angles*atan2(v2S.y-v.y, v2S.x-v.x)/(2*M_PI));
+                        int v2Wth = ceil(horizon_angles*atan2(v2W.y-v.y, v2W.x-v.x)/(2*M_PI));
+                        for(int th=v2th;th<v2Nth;++th){
+                            
+                        }
+                        
+                        
+                    }
+                    
+                    
                     tile_empty = false;
                     N++;
                     coord_y = coord_y + height_map_resolution;

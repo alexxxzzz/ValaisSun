@@ -24,6 +24,9 @@ class height_map {
 public:
     height_map (std::ifstream&, double , double , double , double);
     locset::const_iterator find_point(vector3d);
+    locset::const_iterator first_point();
+    locset::const_iterator last_point();
+
     double compute_elevation_angle(vector3d, double, double, double);
     int size(){
         return locations.size();

@@ -25,3 +25,30 @@ std::pair<double,double> swiss_to_lat_lon(double north, double east){
     return std::make_pair(lat,lon);
     
 }
+
+std::pair<double,double> lat_lon_to_swiss(double lat, double lon){
+    lat *= 3600;                                                // Convert latitude and longitude in seconds.
+    lon *= 3600;
+    
+    lat -= 169028.66;                                           // Shift the origin in Bern.
+    lon -= 26782.5;
+    
+    lat /= 10000;                                               // Convert latitude and longitude in 10000" units.
+    lon /= 10000;
+    
+    double east = 600072.37;                                       // Calculate easting [m].
+    east += 211455.93 * lon;
+    east -= 10938.51 * lon * lat;
+    east -= 0.36 * lon * lat * lat;
+    east -= 44.54 * lon * lon * lon;
+    
+    double north = 200147.07;                                      // Calculate northing [m].
+    north += 308807.95 * lat;
+    north += 3745.25 * lon * lon;
+    north += 76.63 * lat * lat;
+    north -= 194.56 * lon * lon * lat;
+    north += 119.79 * lat * lat * lat;
+    
+    
+    return std::make_pair(north,east);
+}

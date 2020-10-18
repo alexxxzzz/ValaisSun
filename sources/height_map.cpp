@@ -49,6 +49,13 @@ height_map::height_map (std::ifstream& ifs, double south_bound, double north_bou
 locset::const_iterator height_map::find_point(vector3d point){
     return locations.find(point);
 }
+locset::const_iterator height_map::first_point(){
+    return locations.begin();
+}
+locset::const_iterator height_map::last_point(){
+    return locations.end();
+}
+
 
 double height_map::compute_elevation_angle(vector3d point, double theta, double height_map_resolution, double angular_resolution){
     double resolution_distance = height_map_resolution / tan(angular_resolution*M_PI/180.0);
